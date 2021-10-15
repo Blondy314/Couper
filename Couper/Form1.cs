@@ -35,6 +35,7 @@ namespace Couper
 
         private const string PageName = "Couper";
         private const string SectionName = "Shopping";
+        private const string Sum = "Sum";
 
         public Form1()
         {
@@ -105,7 +106,6 @@ namespace Couper
 
                 SetProg(true);
 
-                lstResults.Items.Clear();
                 var folder = "Inbox";
 
                 if (string.IsNullOrEmpty(tsNotebook.Text))
@@ -140,7 +140,41 @@ namespace Couper
 
                 UpdateSum();
 
-                var details = await Task.Run(() => GetItems(days, txtFolder.Text));
+                var details = (await Task.Run(() => GetItems(days, txtFolder.Text))).ToArray();
+
+                UpdateItems(detailsFromNote, details);
+
+                Log($"Found {lstResults.Items.Count} items in mail");
+
+                if (lstResults.Items.Count > 0)
+                {
+                    await Task.Run(() => SyncToOneNote(details, true));
+                }
+            }
+            catch (Exception ex)
+            {
+                Log(ex);
+            }
+            finally
+            {
+                Log("Done.");
+
+                btnGo.Enabled = true;
+                SetProg(false);
+            }
+        }
+
+        private void UpdateItems(Details[] detailsFromNote, Details[] details)
+        {
+            RunSafe(() =>
+            {
+                if (InvokeRequired)
+                {
+                    BeginInvoke((Action)(() => UpdateItems(detailsFromNote, details)));
+                    return;
+                }
+
+                lstResults.Items.Clear();
 
                 foreach (var detail in details)
                 {
@@ -155,7 +189,7 @@ namespace Couper
                         if (exist != null)
                         {
                             detail.Used = exist.Used;
-                            if(string.IsNullOrEmpty(detail.Used))
+                            if (string.IsNullOrEmpty(detail.Used))
                             {
                                 item.ForeColor = Color.DarkBlue;
                             }
@@ -182,25 +216,7 @@ namespace Couper
                 }
 
                 UpdateSum();
-
-                Log($"Found {lstResults.Items.Count} items in mail");
-
-                if (lstResults.Items.Count > 0)
-                {
-                    await Task.Run(() => SyncToOneNote(details.ToArray(), true));
-                }
-            }
-            catch (Exception ex)
-            {
-                Log(ex);
-            }
-            finally
-            {
-                Log("Done.");
-
-                btnGo.Enabled = true;
-                SetProg(false);
-            }
+            });
         }
 
         private void Log(Exception ex)
@@ -492,7 +508,6 @@ namespace Couper
                 string sectionId = section.Attribute("ID").Value;
 
                 string pageId;
-                bool shouldUpdate = false;
 
                 var pageNode = section.Descendants(ns + "Page").Where(n => n.Attribute("name").Value == PageName).LastOrDefault();
                 string xml;
@@ -505,7 +520,6 @@ namespace Couper
                     }
 
                     CreateNewPage(PageName, onenoteApp, ns, sectionId, out pageId, out xml);
-                    shouldUpdate = true;
                 }
                 else
                 {
@@ -519,9 +533,16 @@ namespace Couper
                 var table = outline.Descendants(ns + "Table").First();
                 var content = outline.ToString();
 
+                var existingDetails = ParseDetails(ns, outline);
+
                 if (!update)
                 {
-                    return ParseDetails(ns, outline);
+                    return existingDetails;
+                }
+
+                if (existingDetails.Length == 0)
+                {
+                    existingDetails = details;
                 }
 
                 foreach (var detail in details)
@@ -530,8 +551,6 @@ namespace Couper
                     {
                         continue;
                     }
-
-                    shouldUpdate = true;
 
                     table.Add(
                     new XElement(ns + "Row",
@@ -543,12 +562,16 @@ namespace Couper
                         ));
                 }
 
-                if (shouldUpdate)
-                {
-                    onenoteApp.UpdatePageContent(doc.ToString());
-                }
+                var sumElem = outline.Descendants(ns + "T").Where(e => e.Value.Contains(Sum)).First();
+                var sum = existingDetails
+                    .Where(i => string.IsNullOrEmpty(i.Used))
+                    .Sum(i => Convert.ToInt32(i.Amount));
 
-                return null;
+                sumElem.Value = $"{Sum}: {sum}";
+
+                onenoteApp.UpdatePageContent(doc.ToString());
+
+                return existingDetails;
             }
             catch (Exception ex)
             {
@@ -592,10 +615,7 @@ namespace Couper
                                 new XElement(ns + "T",
                                     new XCData(pageName)))));
 
-            var outline = new XElement(ns + "Outline",
-                        new XElement(ns + "OEChildren",
-                            new XElement(ns + "OE")));
-
+            var outline = new XElement(ns + "Outline");
 
             var columns = new List<XElement>();
 
@@ -617,13 +637,20 @@ namespace Couper
                   new XAttribute("bordersVisible", "true"),
                   new XAttribute("hasHeaderRow", "true"),
                   new XElement(ns + "Columns",
-                  columns
-                  ),
+                  columns),
                   row);
 
+            var sum = new XElement(ns + "OE",
+                new XElement(ns + "T",
+                new XCData($"{Sum}: 0\n\n")));
+
             outline.Add(new XElement(ns + "OEChildren",
-                  new XElement(ns + "OE",
-                  table)));
+                        sum,
+                        new XElement(ns + "OE",
+                            new XElement(ns + "T",
+                                new XCData($""))),
+                        new XElement(ns + "OE",
+                            table)));
 
             newPage.Add(outline);
 
@@ -671,7 +698,9 @@ namespace Couper
 
             await RunSafeAsync(() =>
             {
-                SyncToOneNote(items, true);
+                var detailsFromNote = SyncToOneNote(items, true);
+                UpdateItems(detailsFromNote, detailsFromNote);
+
             });
 
             tsOneNote.Enabled = true;

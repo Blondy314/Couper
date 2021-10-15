@@ -71,7 +71,7 @@
             this.lstResults.Location = new System.Drawing.Point(0, 0);
             this.lstResults.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.lstResults.Name = "lstResults";
-            this.lstResults.Size = new System.Drawing.Size(1537, 319);
+            this.lstResults.Size = new System.Drawing.Size(1537, 321);
             this.lstResults.TabIndex = 0;
             this.lstResults.UseCompatibleStateImageBehavior = false;
             this.lstResults.View = System.Windows.Forms.View.Details;
@@ -205,14 +205,14 @@
             this.tsOneNote.Image = ((System.Drawing.Image)(resources.GetObject("tsOneNote.Image")));
             this.tsOneNote.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.tsOneNote.Name = "tsOneNote";
-            this.tsOneNote.Size = new System.Drawing.Size(72, 33);
+            this.tsOneNote.Size = new System.Drawing.Size(72, 29);
             this.tsOneNote.Text = "Sync";
             this.tsOneNote.Click += new System.EventHandler(this.tsOneNote_Click);
             // 
             // splitContainer1
             // 
             this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.splitContainer1.Location = new System.Drawing.Point(0, 76);
+            this.splitContainer1.Location = new System.Drawing.Point(0, 72);
             this.splitContainer1.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.splitContainer1.Name = "splitContainer1";
             this.splitContainer1.Orientation = System.Windows.Forms.Orientation.Horizontal;
@@ -224,8 +224,8 @@
             // splitContainer1.Panel2
             // 
             this.splitContainer1.Panel2.Controls.Add(this.lstLog);
-            this.splitContainer1.Size = new System.Drawing.Size(1537, 554);
-            this.splitContainer1.SplitterDistance = 319;
+            this.splitContainer1.Size = new System.Drawing.Size(1537, 558);
+            this.splitContainer1.SplitterDistance = 321;
             this.splitContainer1.SplitterWidth = 5;
             this.splitContainer1.TabIndex = 5;
             // 
@@ -240,7 +240,7 @@
             this.lstLog.Location = new System.Drawing.Point(0, 0);
             this.lstLog.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.lstLog.Name = "lstLog";
-            this.lstLog.Size = new System.Drawing.Size(1537, 230);
+            this.lstLog.Size = new System.Drawing.Size(1537, 232);
             this.lstLog.TabIndex = 0;
             this.lstLog.UseCompatibleStateImageBehavior = false;
             this.lstLog.View = System.Windows.Forms.View.Details;
@@ -264,7 +264,7 @@
             this.tsOneNote});
             this.toolStrip2.Location = new System.Drawing.Point(0, 38);
             this.toolStrip2.Name = "toolStrip2";
-            this.toolStrip2.Size = new System.Drawing.Size(1537, 38);
+            this.toolStrip2.Size = new System.Drawing.Size(1537, 34);
             this.toolStrip2.TabIndex = 1;
             this.toolStrip2.Text = "toolStrip2";
             // 
@@ -272,13 +272,13 @@
             // 
             this.toolStripLabel6.Image = ((System.Drawing.Image)(resources.GetObject("toolStripLabel6.Image")));
             this.toolStripLabel6.Name = "toolStripLabel6";
-            this.toolStripLabel6.Size = new System.Drawing.Size(104, 33);
+            this.toolStripLabel6.Size = new System.Drawing.Size(104, 29);
             this.toolStripLabel6.Text = "OneNote";
             // 
             // toolStripLabel5
             // 
             this.toolStripLabel5.Name = "toolStripLabel5";
-            this.toolStripLabel5.Size = new System.Drawing.Size(97, 33);
+            this.toolStripLabel5.Size = new System.Drawing.Size(97, 29);
             this.toolStripLabel5.Text = "Notebook:";
             // 
             // tsNotebook
@@ -286,7 +286,7 @@
             this.tsNotebook.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.tsNotebook.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.tsNotebook.Name = "tsNotebook";
-            this.tsNotebook.Size = new System.Drawing.Size(188, 38);
+            this.tsNotebook.Size = new System.Drawing.Size(188, 34);
             this.tsNotebook.TextBoxTextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             // 
             // Form1
