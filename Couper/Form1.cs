@@ -43,7 +43,6 @@ namespace Couper
             _settingsFile = Path.Combine(System.Windows.Forms.Application.LocalUserAppDataPath, "settings.ini");
         }
 
-
         private void Form1_Load(object sender, EventArgs e)
         {
             RunSafe(() =>
@@ -237,20 +236,6 @@ namespace Couper
 
         private List<Details> GetItems(int days, string cibusFolder)
         {
-            //var list = new List<Details>();
-
-            //list.Add(new Details
-            //{
-            //    Number = "9147512312312345",
-            //    Amount = "200",
-            //    Date = "29/2/2021",
-            //    Expires = "29/10/2021",
-            //    Location = "שופרסל הוד השרון"
-            //});
-
-            //return list;
-
-
             Application outlookApplication = new Application();
             NameSpace outlookNamespace = outlookApplication.GetNamespace("MAPI");
             MAPIFolder inboxFolder = outlookNamespace.GetDefaultFolder(OlDefaultFolders.olFolderInbox);
@@ -293,9 +278,9 @@ namespace Couper
                         }
                     }
                 }
-                catch
+                catch(Exception ex)
                 {
-
+                    Log(ex);
                 }
             }
 
@@ -376,7 +361,7 @@ namespace Couper
         {
             RunSafe(() =>
             {
-                if (e.KeyCode == Keys.F5)
+                if (e.KeyCode == Keys.F5 || e.KeyCode == Keys.Enter)
                 {
                     btnGo.PerformClick();
                 }
@@ -419,12 +404,6 @@ namespace Couper
                 OnCopy();
             });
         }
-
-        private string CreateOutline()
-        {
-            return "";
-        }
-
 
         private Details[] ParseDetails(XNamespace ns, XElement outline)
         {
@@ -647,8 +626,7 @@ namespace Couper
 
         private string GetObjectId(Microsoft.Office.Interop.OneNote.Application onenoteApp, XNamespace ns, string parentId, HierarchyScope scope, string objectName)
         {
-            string xml;
-            onenoteApp.GetHierarchy(parentId, scope, out xml);
+            onenoteApp.GetHierarchy(parentId, scope, out string xml);
 
             var doc = XDocument.Parse(xml);
             var nodeName = "";
@@ -692,7 +670,6 @@ namespace Couper
         public string Notebook;
         public string CibusFolder;
     }
-
 
     public class Details
     {
