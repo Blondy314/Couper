@@ -36,7 +36,9 @@ namespace Couper
         private const string PageName = "Couper";
         private const string SectionName = "Shopping";
         private const string Sum = "Sum";
+        private const string DateFormat = "dd/MM/yyyy";
 
+       
         public Form1()
         {
             InitializeComponent();
@@ -69,7 +71,7 @@ namespace Couper
                     MessageBox.Show(this, MailMessage() + "\n\n" + SyncMessage(), "Couper", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Log(ex);
             }
@@ -199,7 +201,7 @@ namespace Couper
                         if (exist != null)
                         {
                             detail.Used = exist.Used;
-                            if (string.IsNullOrEmpty(detail.Used))
+                            if (!detail.Used)
                             {
                                 item.ForeColor = Color.DarkBlue;
                             }
@@ -208,13 +210,13 @@ namespace Couper
 
                     foreach (var col in _columns)
                     {
-                        string val = col.GetValue(detail) as string;
+                        string val = col.GetValue(detail).ToString();
                         item.SubItems[IndexOf(col.Name)].Text = val;
                         item.Checked = true;
 
                         if (col.Name == "Expires")
                         {
-                            var time = DateTime.ParseExact(val, "dd/M/yyyy", CultureInfo.InvariantCulture);
+                            var time = ParseDate(val);
                             if (time < DateTime.Now || time - DateTime.Now < TimeSpan.FromDays(3))
                             {
                                 item.ForeColor = Color.DarkRed;
@@ -317,14 +319,29 @@ namespace Couper
             return items.Select(i => new Details
             {
                 Number = GetField(i.Body, $"{TitleCode}:"),
-                Amount = GetField(i.Body, $"{TitleAmount}:").Split(' ')[0],
-                Expires = GetField(i.Body, $"{TitleExpires} "),
+                Amount = Convert.ToInt32(GetField(i.Body, $"{TitleAmount}:").Split(' ')[0]),
+                Expires = ParseDate(GetField(i.Body, $"{TitleExpires} ")),
                 Location = GetField(i.Body, $"{TitleLocation}:"),
-                Date = GetField(i.Body, $"{TitleDate}:"),
+                Date = ParseDate(GetField(i.Body, $"{TitleDate}:")),
             })
             .OrderByDescending(i => i.Date)
             .ThenByDescending(i => Convert.ToInt32(i.Amount))
             .ToList();
+        }
+
+        private static DateTime ParseDate(string date)
+        {
+            if (DateTime.TryParseExact(date, DateFormat, CultureInfo.CurrentCulture, DateTimeStyles.None, out var result))
+            {
+                return result;
+            }
+
+            if (DateTime.TryParseExact(date, "dd/M/yyyy", CultureInfo.CurrentCulture, DateTimeStyles.None, out result))
+            {
+                return result;
+            }
+
+            return DateTime.Parse(date);
         }
 
         private void RunSafe(Action action)
@@ -402,7 +419,7 @@ namespace Couper
         {
             lblSum.Text = lstResults.CheckedItems.Cast<ListViewItem>()
                 .Select(i => (Details)i.Tag)
-                .Where(i => string.IsNullOrEmpty(i.Used))
+                .Where(i => !i.Used)
                 .Sum(i => Convert.ToInt32(i.Amount)).ToString();
         }
 
@@ -449,12 +466,12 @@ namespace Couper
 
                 details.Add(new Details
                 {
-                    Amount = cells[0].Item1,
+                    Amount = Convert.ToInt32(cells[0].Item1),
                     Number = cells[1].Item1,
-                    Date = cells[2].Item1,
+                    Date = ParseDate(cells[2].Item1),
                     Location = cells[3].Item1,
-                    Expires = cells[4].Item1,
-                    Used = cells.Any(c => c.Item2) ? "V" : ""
+                    Expires = ParseDate(cells[4].Item1),
+                    Used = cells.Any(c => c.Item2)
                 });
             }
 
@@ -564,17 +581,17 @@ namespace Couper
 
                     table.Add(
                     new XElement(ns + "Row",
-                        BuildCell(ns, detail.Amount),
+                        BuildCell(ns, detail.Amount.ToString()),
                         BuildCell(ns, detail.Number),
-                        BuildCell(ns, detail.Date),
+                        BuildCell(ns, detail.Date.ToString()),
                         BuildCell(ns, detail.Location),
-                        BuildCell(ns, detail.Expires)
+                        BuildCell(ns, detail.Expires.ToString(DateFormat))
                         ));
                 }
 
                 var sumElem = outline.Descendants(ns + "T").Where(e => e.Value.Contains(Sum)).First();
                 var sum = existingDetails
-                    .Where(i => string.IsNullOrEmpty(i.Used))
+                    .Where(i => !i.Used)
                     .Sum(i => Convert.ToInt32(i.Amount));
 
                 sumElem.Value = $"{Sum}: {sum}";
@@ -751,11 +768,11 @@ namespace Couper
 
     public class Details
     {
-        public string Date;
-        public string Amount;
+        public DateTime Date;
+        public int Amount;
         public string Number;
-        public string Expires;
+        public DateTime Expires;
         public string Location;
-        public string Used;
+        public bool Used;
     }
 }
