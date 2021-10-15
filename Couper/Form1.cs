@@ -44,9 +44,9 @@ namespace Couper
             _settingsFile = Path.Combine(System.Windows.Forms.Application.LocalUserAppDataPath, "settings.ini");
         }
 
-        private void Form1_Load(object sender, EventArgs e)
+        private async void Form1_Load(object sender, EventArgs e)
         {
-            RunSafe(() =>
+            try
             {
                 LoadSettings();
 
@@ -62,7 +62,17 @@ namespace Couper
                 menu.Items.Add(new ToolStripMenuItem("Copy", Properties.Resources.Copy, (s, _) => OnCopy()));
 
                 lstResults.ContextMenuStrip = menu;
-            });
+
+                if (!File.Exists(_settingsFile))
+                {
+                    await Task.Delay(1000);
+                    MessageBox.Show(this, MailMessage() + "\n\n" + SyncMessage(), "Couper", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch(Exception ex)
+            {
+                Log(ex);
+            }
         }
 
         private void OnCopy()
@@ -706,6 +716,30 @@ namespace Couper
             tsOneNote.Enabled = true;
 
             SetProg(false);
+        }
+
+        private string SyncMessage()
+        {
+            return "In order to sync with OneNote please do the following:\n\n" +
+                "* Enter the notebook name\n" +
+                $"* Create a section called {SectionName}\n";
+        }
+
+        private string MailMessage()
+        {
+            return "Supply the mail folder where the Cibus mails go to.\n" +
+                "If you do not have such folder it is recommended to create one (such as Cibus)\n" +
+                "Otherwise the Inbox folder will be searched (which may take some time)";
+        }
+
+        private void lnkOneNote_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show(this, SyncMessage(), "Cibus Folder", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void lnkFolder_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show(this, MailMessage(), "Cibus Folder", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }
 

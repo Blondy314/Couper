@@ -36,6 +36,7 @@
             this.toolStripSeparator3 = new System.Windows.Forms.ToolStripSeparator();
             this.toolStripLabel4 = new System.Windows.Forms.ToolStripLabel();
             this.txtFolder = new System.Windows.Forms.ToolStripTextBox();
+            this.lnkFolder = new System.Windows.Forms.ToolStripLabel();
             this.toolStripLabel2 = new System.Windows.Forms.ToolStripLabel();
             this.txtDays = new System.Windows.Forms.ToolStripTextBox();
             this.btnGo = new System.Windows.Forms.ToolStripButton();
@@ -54,6 +55,7 @@
             this.toolStripLabel6 = new System.Windows.Forms.ToolStripLabel();
             this.toolStripLabel5 = new System.Windows.Forms.ToolStripLabel();
             this.tsNotebook = new System.Windows.Forms.ToolStripTextBox();
+            this.lnkOneNote = new System.Windows.Forms.ToolStripLabel();
             this.toolStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -71,7 +73,7 @@
             this.lstResults.Location = new System.Drawing.Point(0, 0);
             this.lstResults.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.lstResults.Name = "lstResults";
-            this.lstResults.Size = new System.Drawing.Size(1537, 321);
+            this.lstResults.Size = new System.Drawing.Size(1537, 320);
             this.lstResults.TabIndex = 0;
             this.lstResults.UseCompatibleStateImageBehavior = false;
             this.lstResults.View = System.Windows.Forms.View.Details;
@@ -86,6 +88,7 @@
             this.toolStripSeparator3,
             this.toolStripLabel4,
             this.txtFolder,
+            this.lnkFolder,
             this.toolStripLabel2,
             this.txtDays,
             this.btnGo,
@@ -127,8 +130,8 @@
             // toolStripLabel4
             // 
             this.toolStripLabel4.Name = "toolStripLabel4";
-            this.toolStripLabel4.Size = new System.Drawing.Size(115, 33);
-            this.toolStripLabel4.Text = "Cibus Folder:";
+            this.toolStripLabel4.Size = new System.Drawing.Size(104, 33);
+            this.toolStripLabel4.Text = "Mail Folder:";
             // 
             // txtFolder
             // 
@@ -138,6 +141,15 @@
             this.txtFolder.Size = new System.Drawing.Size(100, 38);
             this.txtFolder.Text = "Cibus";
             this.txtFolder.TextBoxTextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            // 
+            // lnkFolder
+            // 
+            this.lnkFolder.ForeColor = System.Drawing.SystemColors.MenuHighlight;
+            this.lnkFolder.IsLink = true;
+            this.lnkFolder.Name = "lnkFolder";
+            this.lnkFolder.Size = new System.Drawing.Size(20, 33);
+            this.lnkFolder.Text = "?";
+            this.lnkFolder.Click += new System.EventHandler(this.lnkFolder_Click);
             // 
             // toolStripLabel2
             // 
@@ -225,7 +237,7 @@
             // 
             this.splitContainer1.Panel2.Controls.Add(this.lstLog);
             this.splitContainer1.Size = new System.Drawing.Size(1537, 558);
-            this.splitContainer1.SplitterDistance = 321;
+            this.splitContainer1.SplitterDistance = 320;
             this.splitContainer1.SplitterWidth = 5;
             this.splitContainer1.TabIndex = 5;
             // 
@@ -240,7 +252,7 @@
             this.lstLog.Location = new System.Drawing.Point(0, 0);
             this.lstLog.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.lstLog.Name = "lstLog";
-            this.lstLog.Size = new System.Drawing.Size(1537, 232);
+            this.lstLog.Size = new System.Drawing.Size(1537, 233);
             this.lstLog.TabIndex = 0;
             this.lstLog.UseCompatibleStateImageBehavior = false;
             this.lstLog.View = System.Windows.Forms.View.Details;
@@ -261,7 +273,8 @@
             this.toolStripLabel6,
             this.toolStripLabel5,
             this.tsNotebook,
-            this.tsOneNote});
+            this.tsOneNote,
+            this.lnkOneNote});
             this.toolStrip2.Location = new System.Drawing.Point(0, 38);
             this.toolStrip2.Name = "toolStrip2";
             this.toolStrip2.Size = new System.Drawing.Size(1537, 34);
@@ -288,6 +301,15 @@
             this.tsNotebook.Name = "tsNotebook";
             this.tsNotebook.Size = new System.Drawing.Size(188, 34);
             this.tsNotebook.TextBoxTextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            // 
+            // lnkOneNote
+            // 
+            this.lnkOneNote.ForeColor = System.Drawing.SystemColors.MenuHighlight;
+            this.lnkOneNote.IsLink = true;
+            this.lnkOneNote.Name = "lnkOneNote";
+            this.lnkOneNote.Size = new System.Drawing.Size(20, 29);
+            this.lnkOneNote.Text = "?";
+            this.lnkOneNote.Click += new System.EventHandler(this.lnkOneNote_Click);
             // 
             // Form1
             // 
@@ -344,6 +366,8 @@
         private System.Windows.Forms.ColumnHeader columnHeader2;
         private System.Windows.Forms.ToolStripProgressBar tsProg;
         private System.Windows.Forms.ToolStripLabel toolStripLabel6;
+        private System.Windows.Forms.ToolStripLabel lnkOneNote;
+        private System.Windows.Forms.ToolStripLabel lnkFolder;
     }
 }
 
