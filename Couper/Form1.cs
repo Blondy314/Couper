@@ -155,6 +155,10 @@ namespace Couper
                         if (exist != null)
                         {
                             detail.Used = exist.Used;
+                            if(string.IsNullOrEmpty(detail.Used))
+                            {
+                                item.ForeColor = Color.DarkBlue;
+                            }
                         }
                     }
 
@@ -278,7 +282,7 @@ namespace Couper
                         }
                     }
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     Log(ex);
                 }
@@ -415,7 +419,7 @@ namespace Couper
             foreach (var row in rows)
             {
                 var cells = row.Descendants(ns + "Cell")
-                    .Select(c => (c.Value, IsComplete(ns, c))).ToArray();
+                    .Select(c => (GetCellValue(c), IsComplete(ns, c))).ToArray();
 
                 details.Add(new Details
                 {
@@ -429,6 +433,17 @@ namespace Couper
             }
 
             return details.ToArray();
+        }
+
+        private string GetCellValue(XElement cell)
+        {
+            if (!cell.Value.Contains(">"))
+            {
+                return cell.Value;
+            }
+
+            // change "<span\nstyle='direction:ltr;unicode-bidi:embed' lang=en-US>200</span>" to 200
+            return cell.Value.Split('>')[1].Split('<')[0];
         }
 
         private bool IsComplete(XNamespace ns, XElement cell)
