@@ -22,10 +22,12 @@ namespace Couper
 {
     public partial class Form1 : Form
     {
+        private string _pageId;
         private bool _allSelected;
         private Settings _settings;
         private string _settingsFile;
         private PropertyInfo[] _columns;
+        private Microsoft.Office.Interop.OneNote.Application _app;
 
         private const string TitleCode = "קוד שובר";
         private const string TitleAmount = "סכום ההזמנה";
@@ -52,6 +54,8 @@ namespace Couper
             try
             {
                 LoadSettings();
+
+                EnableButton(tsOneNote, false);
 
                 _columns = new Details().GetType().GetProperties();
 
@@ -132,7 +136,8 @@ namespace Couper
         {
             try
             {
-                btnGo.Enabled = false;
+                EnableButton(btnGo, false);
+
                 _allSelected = true;
 
                 SetProg(true);
@@ -190,7 +195,7 @@ namespace Couper
             {
                 Log("Done.");
 
-                btnGo.Enabled = true;
+                EnableButton(btnGo, true);
                 SetProg(false);
             }
         }
@@ -501,6 +506,20 @@ namespace Couper
             return tag.Attribute("completed").Value == "true";
         }
 
+        private void EnableButton(ToolStripButton btn, bool enabled)
+        {
+            RunSafe(() =>
+            {
+                if (InvokeRequired)
+                {
+                    BeginInvoke((Action)(() => EnableButton(btn, enabled)));
+                    return;
+                }
+
+                btn.Enabled = enabled;
+            });
+        }
+
         private Details[] SyncToOneNote(Details[] details, bool update)
         {
             try
@@ -513,10 +532,8 @@ namespace Couper
 
                 Log($"Syncing with OneNote ({_settings.Notebook}\\{SectionName})");
 
-                var onenoteApp = new Microsoft.Office.Interop.OneNote.Application();
-                string notebookXml;
-
-                onenoteApp.GetHierarchy(null, HierarchyScope.hsPages, out notebookXml);
+                _app = new Microsoft.Office.Interop.OneNote.Application();
+                _app.GetHierarchy(null, HierarchyScope.hsPages, out string notebookXml);
 
                 var mainDoc = XDocument.Parse(notebookXml);
                 var ns = mainDoc.Root.Name.Namespace;
@@ -535,8 +552,6 @@ namespace Couper
 
                 string sectionId = section.Attribute("ID").Value;
 
-                string pageId;
-
                 var pageNode = section.Descendants(ns + "Page").Where(n => n.Attribute("name").Value == PageName).LastOrDefault();
                 string xml;
 
@@ -547,13 +562,15 @@ namespace Couper
                         return null;
                     }
 
-                    CreateNewPage(PageName, onenoteApp, ns, sectionId, out pageId, out xml);
+                    xml = CreateNewPage(PageName, ns, sectionId);
                 }
                 else
                 {
-                    pageId = pageNode.Attribute("ID").Value;
-                    onenoteApp.GetPageContent(pageId, out xml, PageInfo.piAll);
+                    _pageId = pageNode.Attribute("ID").Value;
+                    _app.GetPageContent(_pageId, out xml, PageInfo.piAll);
                 }
+
+                EnableButton(tsOneNote, true);
 
                 var doc = XDocument.Parse(xml);
                 var outline = doc.Descendants(ns + "Outline").FirstOrDefault();
@@ -597,7 +614,7 @@ namespace Couper
 
                 sumElem.Value = $"{Sum}: {sum}";
 
-                onenoteApp.UpdatePageContent(doc.ToString());
+                _app.UpdatePageContent(doc.ToString());
 
                 return existingDetails;
             }
@@ -612,30 +629,49 @@ namespace Couper
             }
         }
 
+        private async void tsOneNote_Click(object sender, EventArgs e)
+        {
+            await RunSafeAsync(() =>
+            {
+                Log("Opening OneNote..");
+
+                if(string.IsNullOrEmpty(_pageId) || _app == null)
+                {
+                    throw new Exception("OneNote not inistialized yet..");
+                }
+
+                _app = new Microsoft.Office.Interop.OneNote.Application();
+                _app.GetHyperlinkToObject(_pageId, "", out var link);
+
+                _app.NavigateToUrl(link);
+            });
+        }
+
         private void SetProg(bool busy)
         {
-            if (InvokeRequired)
+            RunSafe(() =>
             {
-                BeginInvoke((Action)(() => SetProg(busy)));
-                return;
-            }
+                if (InvokeRequired)
+                {
+                    BeginInvoke((Action)(() => SetProg(busy)));
+                    return;
+                }
 
-            tsProg.Style = busy ? ProgressBarStyle.Marquee : ProgressBarStyle.Continuous;
+                tsProg.Style = busy ? ProgressBarStyle.Marquee : ProgressBarStyle.Continuous;
+            });
         }
 
 
-        private void CreateNewPage(string pageName,
-            Microsoft.Office.Interop.OneNote.Application onenoteApp,
-            XNamespace ns, string sectionId,
-            out string pageId,
-            out string xml)
+        private string CreateNewPage(string pageName,
+            XNamespace ns, 
+            string sectionId)
         {
             Log($"Creating new OneNote page ({pageName})");
 
-            onenoteApp.CreateNewPage(sectionId, out pageId, NewPageStyle.npsBlankPageWithTitle);
+            _app.CreateNewPage(sectionId, out _pageId, NewPageStyle.npsBlankPageWithTitle);
 
             XElement newPage = new XElement(ns + "Page");
-            newPage.SetAttributeValue("ID", pageId);
+            newPage.SetAttributeValue("ID", _pageId);
             newPage.SetAttributeValue("name", pageName);
 
             newPage.Add(new XElement(ns + "Title",
@@ -682,7 +718,7 @@ namespace Couper
 
             newPage.Add(outline);
 
-            xml = newPage.ToString();
+            return newPage.ToString();
         }
 
         private XElement BuildCell(XNamespace ns, string data)
@@ -694,30 +730,10 @@ namespace Couper
                        new XCData(data)))));
         }
 
-        private string GetObjectId(Microsoft.Office.Interop.OneNote.Application onenoteApp, XNamespace ns, string parentId, HierarchyScope scope, string objectName)
+        private async void tsSync_Click(object sender, EventArgs e)
         {
-            onenoteApp.GetHierarchy(parentId, scope, out string xml);
+            EnableButton(tsSync, false);
 
-            var doc = XDocument.Parse(xml);
-            var nodeName = "";
-
-            switch (scope)
-            {
-                case (HierarchyScope.hsNotebooks): nodeName = "Notebook"; break;
-                case (HierarchyScope.hsPages): nodeName = "Page"; break;
-                case (HierarchyScope.hsSections): nodeName = "Section"; break;
-                default:
-                    return null;
-            }
-
-            var node = doc.Descendants(ns + nodeName).Where(n => n.Attribute("name").Value == objectName).FirstOrDefault();
-
-            return node.Attribute("ID").Value;
-        }
-
-        private async void tsOneNote_Click(object sender, EventArgs e)
-        {
-            tsOneNote.Enabled = false;
             SetProg(true);
 
             var items = lstResults.CheckedObjectsEnumerable.Cast<Details>().ToArray();
@@ -729,7 +745,7 @@ namespace Couper
 
             });
 
-            tsOneNote.Enabled = true;
+            EnableButton(tsSync, true);
 
             SetProg(false);
         }
