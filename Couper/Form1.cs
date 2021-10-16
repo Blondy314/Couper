@@ -16,6 +16,7 @@ using System.Xml.Linq;
 using System.IO;
 using System.Text;
 using System.Xml.Serialization;
+using BrightIdeasSoftware;
 
 namespace Couper
 {
@@ -24,7 +25,7 @@ namespace Couper
         private bool _allSelected;
         private Settings _settings;
         private string _settingsFile;
-        private FieldInfo[] _columns;
+        private PropertyInfo[] _columns;
 
         private const string TitleCode = "קוד שובר";
         private const string TitleAmount = "סכום ההזמנה";
@@ -38,7 +39,7 @@ namespace Couper
         private const string Sum = "Sum";
         private const string DateFormat = "dd/MM/yyyy";
 
-       
+
         public Form1()
         {
             InitializeComponent();
@@ -52,13 +53,12 @@ namespace Couper
             {
                 LoadSettings();
 
-                _columns = new Details().GetType().GetFields();
+                _columns = new Details().GetType();.GetProperties();
 
-                lstResults.Columns.AddRange(_columns.Select(f => new ColumnHeader
-                {
-                    Text = f.Name,
-                    Width = 150
-                }).ToArray());
+                Generator.GenerateColumns(lstResults, typeof(Details), true);
+                lstResults.AutoResizeColumns();
+
+                lstResults.FormatRow += FormatRow;
 
                 var menu = new ContextMenuStrip();
                 menu.Items.Add(new ToolStripMenuItem("Copy", Properties.Resources.Copy, (s, _) => OnCopy()));
@@ -77,13 +77,32 @@ namespace Couper
             }
         }
 
+        private static void FormatRow(object sender, FormatRowEventArgs e)
+        {
+            var msg = (Details)e.Model;
+
+            if (msg.Used)
+            {
+                e.Item.ForeColor = Color.DarkSlateGray;
+                return;
+            }
+
+            if (msg.Expires < DateTime.Now || msg.Expires - DateTime.Now < TimeSpan.FromDays(3))
+            {
+                e.Item.ForeColor = Color.DarkRed;
+                return;
+            }
+
+            e.Item.ForeColor = Color.DarkBlue;
+
+        }
+
         private void OnCopy()
         {
             RunSafe(() =>
             {
-                var lines = lstResults.CheckedItems.Cast<ListViewItem>()
-                    .Select(i => (Details)i.Tag)
-                    .Select(d => string.Join("\t", d.GetType().GetFields().Select(f => f.GetValue(d))));
+                var lines = lstResults.CheckedObjectsEnumerable.Cast<Details>()
+                    .Select(d => string.Join("\t", _columns.Select(f => f.GetValue(d))));
 
                 Clipboard.SetText(string.Join("\r\n", lines));
             });
@@ -101,7 +120,7 @@ namespace Couper
 
         private int IndexOf(string col)
         {
-            return lstResults.Columns.Cast<ColumnHeader>().First(c => c.Text == col).Index;
+            return lstResults.Columns.Cast<OLVColumn>().First(c => c.Text == col).Index;
         }
 
         private bool ShowQuestion(string title, string msg)
@@ -188,44 +207,23 @@ namespace Couper
 
                 lstResults.Items.Clear();
 
-                foreach (var detail in details)
+                if (detailsFromNote != null)
                 {
-                    var item = new ListViewItem(new string[_columns.Length])
+                    foreach (var detail in details)
                     {
-                        Tag = detail
-                    };
 
-                    if (detailsFromNote != null)
-                    {
                         var exist = detailsFromNote.FirstOrDefault(d => d.Number == detail.Number);
                         if (exist != null)
                         {
                             detail.Used = exist.Used;
-                            if (!detail.Used)
-                            {
-                                item.ForeColor = Color.DarkBlue;
-                            }
                         }
                     }
-
-                    foreach (var col in _columns)
-                    {
-                        string val = col.GetValue(detail).ToString();
-                        item.SubItems[IndexOf(col.Name)].Text = val;
-                        item.Checked = true;
-
-                        if (col.Name == "Expires")
-                        {
-                            var time = ParseDate(val);
-                            if (time < DateTime.Now || time - DateTime.Now < TimeSpan.FromDays(3))
-                            {
-                                item.ForeColor = Color.DarkRed;
-                            }
-                        }
-                    }
-
-                    lstResults.Items.Add(item);
                 }
+
+                lstResults.AddObjects(details);
+                lstResults.CheckAll();
+
+                lstResults.AutoResizeColumns();
 
                 UpdateSum();
             });
@@ -417,13 +415,12 @@ namespace Couper
 
         private void UpdateSum()
         {
-            lblSum.Text = lstResults.CheckedItems.Cast<ListViewItem>()
-                .Select(i => (Details)i.Tag)
+            lblSum.Text = lstResults.CheckedObjectsEnumerable.Cast<Details>()
                 .Where(i => !i.Used)
                 .Sum(i => Convert.ToInt32(i.Amount)).ToString();
         }
 
-        private void lstResults_ItemChecked(object sender, ItemCheckedEventArgs e)
+        private void lstResults_ItemChecked(object sender, System.Windows.Forms.ItemCheckedEventArgs e)
         {
             RunSafe(() =>
             {
@@ -437,9 +434,13 @@ namespace Couper
             {
                 _allSelected = !_allSelected;
 
-                foreach (ListViewItem item in lstResults.Items)
+                if (_allSelected)
                 {
-                    item.Checked = _allSelected;
+                    lstResults.CheckAll();
+                }
+                else
+                {
+                    lstResults.UncheckAll();
                 }
             });
         }
@@ -719,9 +720,7 @@ namespace Couper
             tsOneNote.Enabled = false;
             SetProg(true);
 
-            var items = lstResults.CheckedItems.Cast<ListViewItem>()
-                   .Select(i => (Details)i.Tag)
-                   .ToArray();
+            var items = lstResults.CheckedObjectsEnumerable.Cast<Details>().ToArray();
 
             await RunSafeAsync(() =>
             {
@@ -768,11 +767,13 @@ namespace Couper
 
     public class Details
     {
-        public DateTime Date;
-        public int Amount;
-        public string Number;
-        public DateTime Expires;
-        public string Location;
-        public bool Used;
+        [OLVColumn(AspectToStringFormat = "{0:d}")]
+        public DateTime Date { get; set; }
+        public int Amount { get; set; }
+        public string Number { get; set; }
+        [OLVColumn(AspectToStringFormat = "{0:d}")]
+        public DateTime Expires { get; set; }
+        public string Location { get; set; }
+        public bool Used { get; set; }
     }
 }

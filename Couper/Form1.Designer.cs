@@ -1,4 +1,6 @@
-﻿namespace Couper
+﻿using BrightIdeasSoftware;
+
+namespace Couper
 {
     partial class Form1
     {
@@ -29,7 +31,6 @@
         private void InitializeComponent()
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
-            this.lstResults = new System.Windows.Forms.ListView();
             this.toolStrip1 = new System.Windows.Forms.ToolStrip();
             this.btnSelectAll = new System.Windows.Forms.ToolStripButton();
             this.btnCopy = new System.Windows.Forms.ToolStripButton();
@@ -56,28 +57,15 @@
             this.toolStripLabel5 = new System.Windows.Forms.ToolStripLabel();
             this.tsNotebook = new System.Windows.Forms.ToolStripTextBox();
             this.lnkOneNote = new System.Windows.Forms.ToolStripLabel();
+            this.lstResults = new BrightIdeasSoftware.ObjectListView();
             this.toolStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
             this.toolStrip2.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.lstResults)).BeginInit();
             this.SuspendLayout();
-            // 
-            // lstResults
-            // 
-            this.lstResults.CheckBoxes = true;
-            this.lstResults.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.lstResults.GridLines = true;
-            this.lstResults.HideSelection = false;
-            this.lstResults.Location = new System.Drawing.Point(0, 0);
-            this.lstResults.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
-            this.lstResults.Name = "lstResults";
-            this.lstResults.Size = new System.Drawing.Size(1537, 320);
-            this.lstResults.TabIndex = 0;
-            this.lstResults.UseCompatibleStateImageBehavior = false;
-            this.lstResults.View = System.Windows.Forms.View.Details;
-            this.lstResults.ItemChecked += new System.Windows.Forms.ItemCheckedEventHandler(this.lstResults_ItemChecked);
             // 
             // toolStrip1
             // 
@@ -311,6 +299,22 @@
             this.lnkOneNote.Text = "?";
             this.lnkOneNote.Click += new System.EventHandler(this.lnkOneNote_Click);
             // 
+            // lstResults
+            // 
+            this.lstResults.CellEditUseWholeCell = false;
+            this.lstResults.CheckBoxes = true;
+            this.lstResults.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lstResults.GridLines = true;
+            this.lstResults.HideSelection = false;
+            this.lstResults.Location = new System.Drawing.Point(0, 0);
+            this.lstResults.Name = "lstResults";
+            this.lstResults.ShowGroups = false;
+            this.lstResults.Size = new System.Drawing.Size(1537, 320);
+            this.lstResults.TabIndex = 0;
+            this.lstResults.UseCompatibleStateImageBehavior = false;
+            this.lstResults.View = System.Windows.Forms.View.Details;
+            this.lstResults.ItemChecked += new System.Windows.Forms.ItemCheckedEventHandler(this.lstResults_ItemChecked);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
@@ -334,14 +338,13 @@
             this.splitContainer1.ResumeLayout(false);
             this.toolStrip2.ResumeLayout(false);
             this.toolStrip2.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.lstResults)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
         }
 
         #endregion
-
-        private System.Windows.Forms.ListView lstResults;
         private System.Windows.Forms.ToolStrip toolStrip1;
         private System.Windows.Forms.ToolStripLabel toolStripLabel1;
         private System.Windows.Forms.ToolStripLabel lblSum;
@@ -367,6 +370,7 @@
         private System.Windows.Forms.ToolStripProgressBar tsProg;
         private System.Windows.Forms.ToolStripLabel toolStripLabel6;
         private System.Windows.Forms.ToolStripLabel lnkOneNote;
+        private ObjectListView lstResults;
         private System.Windows.Forms.ToolStripLabel lnkFolder;
     }
 }
