@@ -53,7 +53,7 @@ namespace Couper
             {
                 LoadSettings();
 
-                _columns = new Details().GetType();.GetProperties();
+                _columns = new Details().GetType().GetProperties();
 
                 Generator.GenerateColumns(lstResults, typeof(Details), true);
                 lstResults.AutoResizeColumns();
