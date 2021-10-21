@@ -307,7 +307,7 @@ namespace Couper
                     await Task.Run(() => SyncToOneNote(details, true));
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Log(ex);
             }
@@ -516,15 +516,16 @@ namespace Couper
         private Details ParseRow(XNamespace ns, XElement row)
         {
             var cells = row.Descendants(ns + "Cell")
-                    .Select(c => (GetCellValue(c), IsComplete(ns, c))).ToArray();
+                    .Select(c => (GetCellValue(c), IsComplete(ns, c)))
+                    .ToArray();
 
             return new Details
             {
-                Amount = Convert.ToInt32(cells[0].Item1),
-                Number = cells[1].Item1,
-                Date = ParseDate(cells[2].Item1),
-                Location = cells[3].Item1,
-                Expires = ParseDate(cells[4].Item1),
+                Amount = Convert.ToInt32(cells[1].Item1),
+                Number = cells[2].Item1,
+                Date = ParseDate(cells[3].Item1),
+                Location = cells[4].Item1,
+                Expires = ParseDate(cells[5].Item1),
                 Used = cells.Any(c => c.Item2)
             };
         }
@@ -663,9 +664,10 @@ namespace Couper
                     {
                         continue;
                     }
-                    
+
                     rows.Add(
                     new XElement(ns + "Row",
+                        BuildCell(ns, "", true),
                         BuildCell(ns, detail.Amount.ToString()),
                         BuildCell(ns, detail.Number),
                         BuildCell(ns, detail.Date.ToString()),
@@ -749,6 +751,14 @@ namespace Couper
             newPage.SetAttributeValue("ID", _pageId);
             newPage.SetAttributeValue("name", pageName);
 
+            var tag = new XElement(ns + "TagDef",
+                       new XAttribute("index", "0"),
+                       new XAttribute("type", "0"),
+                       new XAttribute("symbol", "3"),
+                       new XAttribute("name", "To Do"));
+
+            newPage.Add(tag);
+
             newPage.Add(new XElement(ns + "Title",
                             new XElement(ns + "OE",
                                 new XElement(ns + "T",
@@ -766,6 +776,7 @@ namespace Couper
             }
 
             var row = new XElement(ns + "Row",
+                BuildCell(ns, ""),
                 BuildCell(ns, TitleAmount),
                 BuildCell(ns, TitleCode),
                 BuildCell(ns, TitleDate),
@@ -796,13 +807,24 @@ namespace Couper
             return newPage.ToString();
         }
 
-        private XElement BuildCell(XNamespace ns, string data)
+        private XElement BuildCell(XNamespace ns, string data, bool addCheck = false)
         {
+            var tag = new XElement(ns + "Tag",
+                                new XAttribute("index", "0"),
+                                new XAttribute("completed", "false"));
+
+            var child = new XElement(ns + "OE",
+                                new XElement(ns + "T",
+                                    new XCData(data)));
+
+            if (addCheck)
+            {
+                child.AddFirst(tag);
+            }
+
             return new XElement(ns + "Cell",
-                       new XElement(ns + "OEChildren",
-                       new XElement(ns + "OE",
-                       new XElement(ns + "T",
-                       new XCData(data)))));
+                    new XElement(ns + "OEChildren",
+                        child));
         }
 
         private async void tsSync_Click(object sender, EventArgs e)
