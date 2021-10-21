@@ -294,15 +294,15 @@ namespace Couper
                     Location = GetField(i.Body, $"{TitleLocation}:"),
                     Date = ParseDate(GetField(i.Body, $"{TitleDate}:")),
                 })
-               .OrderByDescending(i => i.Date)
+               .OrderBy(i => i.Date)
                .ThenByDescending(i => Convert.ToInt32(i.Amount))
                .ToArray();
 
                 UpdateItems(detailsFromNote, details);
 
-                Log($"Found {lstResults.Items.Count} items in mail");
+                Log($"Found {details.Length} items in mail");
 
-                if (lstResults.Items.Count > 0)
+                if (details.Length > 0)
                 {
                     await Task.Run(() => SyncToOneNote(details, true));
                 }
@@ -513,6 +513,22 @@ namespace Couper
             });
         }
 
+        private Details ParseRow(XNamespace ns, XElement row)
+        {
+            var cells = row.Descendants(ns + "Cell")
+                    .Select(c => (GetCellValue(c), IsComplete(ns, c))).ToArray();
+
+            return new Details
+            {
+                Amount = Convert.ToInt32(cells[0].Item1),
+                Number = cells[1].Item1,
+                Date = ParseDate(cells[2].Item1),
+                Location = cells[3].Item1,
+                Expires = ParseDate(cells[4].Item1),
+                Used = cells.Any(c => c.Item2)
+            };
+        }
+
         private Details[] ParseDetails(XNamespace ns, XElement outline)
         {
             // skip header
@@ -525,15 +541,7 @@ namespace Couper
                 var cells = row.Descendants(ns + "Cell")
                     .Select(c => (GetCellValue(c), IsComplete(ns, c))).ToArray();
 
-                details.Add(new Details
-                {
-                    Amount = Convert.ToInt32(cells[0].Item1),
-                    Number = cells[1].Item1,
-                    Date = ParseDate(cells[2].Item1),
-                    Location = cells[3].Item1,
-                    Expires = ParseDate(cells[4].Item1),
-                    Used = cells.Any(c => c.Item2)
-                });
+                details.Add(ParseRow(ns, row));
             }
 
             return details.ToArray();
@@ -645,14 +653,18 @@ namespace Couper
                     existingDetails = details;
                 }
 
+                var rows = table.Descendants(ns + "Row").ToList();
+
+                table.Descendants(ns + "Row").Remove();
+
                 foreach (var detail in details)
                 {
                     if (content.Contains(detail.Number))
                     {
                         continue;
                     }
-
-                    table.Add(
+                    
+                    rows.Add(
                     new XElement(ns + "Row",
                         BuildCell(ns, detail.Amount.ToString()),
                         BuildCell(ns, detail.Number),
@@ -660,6 +672,14 @@ namespace Couper
                         BuildCell(ns, detail.Location),
                         BuildCell(ns, detail.Expires.ToString(DateFormat))
                         ));
+                }
+
+                // header line
+                table.Add(rows[0]);
+
+                foreach (var row in rows.Skip(1).OrderBy(r => ParseRow(ns, r).Date))
+                {
+                    table.Add(row);
                 }
 
                 var sumElem = outline.Descendants(ns + "T").Where(e => e.Value.Contains(Sum)).First();
