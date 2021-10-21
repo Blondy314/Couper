@@ -17,6 +17,7 @@ using System.IO;
 using System.Text;
 using System.Xml.Serialization;
 using BrightIdeasSoftware;
+using System.Runtime.InteropServices;
 
 namespace Couper
 {
@@ -27,6 +28,7 @@ namespace Couper
         private Settings _settings;
         private string _settingsFile;
         private PropertyInfo[] _columns;
+        Application _outlookApplication;
         private Microsoft.Office.Interop.OneNote.Application _app;
 
         private const string TitleCode = "קוד שובר";
@@ -35,6 +37,8 @@ namespace Couper
         private const string TitleLocation = "סניף";
         private const string TitleDate = "תאריך";
         private const string TitleUsed = "משומש";
+
+        private const string Subject = "שובר על סך";
 
         private const string PageName = "Couper";
         private const string SectionName = "Shopping";
@@ -142,8 +146,6 @@ namespace Couper
 
                 SetProg(true);
 
-                var folder = "Inbox";
-
                 if (string.IsNullOrEmpty(tsNotebook.Text))
                 {
                     if (!ShowQuestion("OneNote Notebook",
@@ -160,43 +162,21 @@ namespace Couper
                     {
                         return;
                     }
+
+                    txtFolder.Text = "Inbox";
                 }
-                else
-                {
-                    folder = txtFolder.Text;
-                }
+
+                var folder = txtFolder.Text;
 
                 SaveSettings();
 
-                var detailsFromNote = SyncToOneNote(null, false);
-
                 var days = Convert.ToInt32(txtDays.Text);
 
-                Log($"Fetching mails from the last {days} days (Folder: {folder})");
-
-                UpdateSum();
-
-                var details = (await Task.Run(() => GetItems(days, txtFolder.Text))).ToArray();
-
-                UpdateItems(detailsFromNote, details);
-
-                Log($"Found {lstResults.Items.Count} items in mail");
-
-                if (lstResults.Items.Count > 0)
-                {
-                    await Task.Run(() => SyncToOneNote(details, true));
-                }
+                await Task.Run(() => GetItems(days, txtFolder.Text));
             }
             catch (Exception ex)
             {
                 Log(ex);
-            }
-            finally
-            {
-                Log("Done.");
-
-                EnableButton(btnGo, true);
-                SetProg(false);
             }
         }
 
@@ -216,7 +196,6 @@ namespace Couper
                 {
                     foreach (var detail in details)
                     {
-
                         var exist = detailsFromNote.FirstOrDefault(d => d.Number == detail.Number);
                         if (exist != null)
                         {
@@ -269,67 +248,134 @@ namespace Couper
             }
         }
 
-        private List<Details> GetItems(int days, string cibusFolder)
+        private async void Application_AdvancedSearchComplete(Search search, int days)
         {
-            Application outlookApplication = new Application();
-            NameSpace outlookNamespace = outlookApplication.GetNamespace("MAPI");
-            MAPIFolder inboxFolder = outlookNamespace.GetDefaultFolder(OlDefaultFolders.olFolderInbox);
-
-            var items = new List<MailItem>();
-
-            foreach (Folder folder in inboxFolder.Folders)
+            try
             {
-                try
+                var now = DateTime.Now;
+                var items = new List<MailItem>();
+
+                foreach (var result in search.Results)
                 {
-                    var name = folder.Name;
-                    if (!string.IsNullOrEmpty(cibusFolder) && name != cibusFolder)
+                    if (!(result is MailItem))
                     {
                         continue;
                     }
 
-                    foreach (MailItem item in folder.Items)
+                    var item = (MailItem)result;
+
+                    if (now - item.ReceivedTime > TimeSpan.FromDays(days))
                     {
-                        try
-                        {
-                            if (DateTime.Now - item.ReceivedTime > TimeSpan.FromDays(days))
-                            {
-                                continue;
-                            }
+                        continue;
+                    }
 
-                            var subject = item.Subject;
-                            if (!subject.Contains("שובר על סך"))
-                            {
-                                continue;
-                            }
+                    var subject = item.Subject;
+                    if (!subject.Contains(Subject))
+                    {
+                        continue;
+                    }
 
-                            if (item.Sender?.Name?.Contains("Cibus") == true)
-                            {
-                                items.Add(item);
-                            }
-                        }
-                        catch
-                        {
-
-                        }
+                    if (item.Sender?.Name?.Contains("Cibus") == true)
+                    {
+                        items.Add(item);
+                        Log($"{item.Subject} ({item.ReceivedTime})");
                     }
                 }
-                catch (Exception ex)
+
+                var detailsFromNote = SyncToOneNote(null, false);
+
+                UpdateSum();
+
+                var details = items.Select(i => new Details
                 {
-                    Log(ex);
+                    Number = GetField(i.Body, $"{TitleCode}:"),
+                    Amount = Convert.ToInt32(GetField(i.Body, $"{TitleAmount}:").Split(' ')[0]),
+                    Expires = ParseDate(GetField(i.Body, $"{TitleExpires} ")),
+                    Location = GetField(i.Body, $"{TitleLocation}:"),
+                    Date = ParseDate(GetField(i.Body, $"{TitleDate}:")),
+                })
+               .OrderByDescending(i => i.Date)
+               .ThenByDescending(i => Convert.ToInt32(i.Amount))
+               .ToArray();
+
+                UpdateItems(detailsFromNote, details);
+
+                Log($"Found {lstResults.Items.Count} items in mail");
+
+                if (lstResults.Items.Count > 0)
+                {
+                    await Task.Run(() => SyncToOneNote(details, true));
                 }
             }
-
-            return items.Select(i => new Details
+            catch(Exception ex)
             {
-                Number = GetField(i.Body, $"{TitleCode}:"),
-                Amount = Convert.ToInt32(GetField(i.Body, $"{TitleAmount}:").Split(' ')[0]),
-                Expires = ParseDate(GetField(i.Body, $"{TitleExpires} ")),
-                Location = GetField(i.Body, $"{TitleLocation}:"),
-                Date = ParseDate(GetField(i.Body, $"{TitleDate}:")),
-            })
-            .OrderByDescending(i => i.Date)
-            .ThenByDescending(i => Convert.ToInt32(i.Amount))
-            .ToList();
+                Log(ex);
+            }
+            finally
+            {
+                Log("Done.");
+
+                EnableButton(btnGo, true);
+                SetProg(false);
+            }
+        }
+
+        private void GetItems(int days, string cibusFolder)
+        {
+            _outlookApplication = new Application();
+            _outlookApplication.AdvancedSearchComplete += (s) => Application_AdvancedSearchComplete(s, days);
+
+            NameSpace outlookNamespace = _outlookApplication.GetNamespace("MAPI");
+            MAPIFolder inboxFolder = outlookNamespace.GetDefaultFolder(OlDefaultFolders.olFolderInbox);
+            var items = new List<MailItem>();
+
+            Log($"Fetching mails from the last {days} days (Folder: {cibusFolder})");
+
+            string scope = null;
+            var dateStart = DateTime.Now.AddDays(-1 * days);
+
+            string filter = $"urn:schemas:mailheader:subject LIKE \'%{Subject}%\' AND urn:schemas:httpmail:datereceived > '{dateStart}'";
+
+            Search advancedSearch = null;
+            NameSpace ns = null;
+
+            Folder folder;
+
+            if (cibusFolder == "Inbox")
+            {
+                folder = (Folder)inboxFolder;
+            }
+            else
+            {
+                folder = inboxFolder.Folders.Cast<Folder>().FirstOrDefault(f => f.Name == cibusFolder);
+            }
+
+            try
+            {
+                ns = _outlookApplication.GetNamespace("MAPI");
+
+                scope = "\'" + folder.FolderPath + "\'";
+                advancedSearch = _outlookApplication.AdvancedSearch(scope, filter, true, "searching");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "An eexception is thrown");
+            }
+            finally
+            {
+                if (advancedSearch != null)
+                {
+                    Marshal.ReleaseComObject(advancedSearch);
+                }
+                if (inboxFolder != null)
+                {
+                    Marshal.ReleaseComObject(inboxFolder);
+                }
+                if (ns != null)
+                {
+                    Marshal.ReleaseComObject(ns);
+                }
+            }
         }
 
         private static DateTime ParseDate(string date)
@@ -420,9 +466,18 @@ namespace Couper
 
         private void UpdateSum()
         {
-            lblSum.Text = lstResults.CheckedObjectsEnumerable.Cast<Details>()
-                .Where(i => !i.Used)
-                .Sum(i => Convert.ToInt32(i.Amount)).ToString();
+            RunSafe(() =>
+            {
+                if (InvokeRequired)
+                {
+                    BeginInvoke((Action)(() => UpdateStyles()));
+                    return;
+                }
+
+                lblSum.Text = lstResults.CheckedObjectsEnumerable.Cast<Details>()
+               .Where(i => !i.Used)
+               .Sum(i => Convert.ToInt32(i.Amount)).ToString();
+            });
         }
 
         private void lstResults_ItemChecked(object sender, System.Windows.Forms.ItemCheckedEventArgs e)
@@ -635,7 +690,7 @@ namespace Couper
             {
                 Log("Opening OneNote..");
 
-                if(string.IsNullOrEmpty(_pageId) || _app == null)
+                if (string.IsNullOrEmpty(_pageId) || _app == null)
                 {
                     throw new Exception("OneNote not inistialized yet..");
                 }
@@ -663,7 +718,7 @@ namespace Couper
 
 
         private string CreateNewPage(string pageName,
-            XNamespace ns, 
+            XNamespace ns,
             string sectionId)
         {
             Log($"Creating new OneNote page ({pageName})");
