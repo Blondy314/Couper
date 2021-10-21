@@ -294,6 +294,7 @@ namespace Couper
                     Location = GetField(i.Body, $"{TitleLocation}:"),
                     Date = ParseDate(GetField(i.Body, $"{TitleDate}:")),
                 })
+               .Distinct()
                .OrderBy(i => i.Date)
                .ThenByDescending(i => Convert.ToInt32(i.Amount))
                .ToArray();
@@ -355,7 +356,7 @@ namespace Couper
                 ns = _outlookApplication.GetNamespace("MAPI");
 
                 scope = "\'" + folder.FolderPath + "\'";
-                advancedSearch = _outlookApplication.AdvancedSearch(scope, filter, true, "searching");
+                advancedSearch = _outlookApplication.AdvancedSearch(scope, filter, false, "Couper Search");
             }
             catch (Exception ex)
             {
@@ -670,7 +671,7 @@ namespace Couper
                         BuildCell(ns, "", true),
                         BuildCell(ns, detail.Amount.ToString()),
                         BuildCell(ns, detail.Number),
-                        BuildCell(ns, detail.Date.ToString()),
+                        BuildCell(ns, detail.Date.ToString(DateFormat)),
                         BuildCell(ns, detail.Location),
                         BuildCell(ns, detail.Expires.ToString(DateFormat))
                         ));
@@ -888,5 +889,20 @@ namespace Couper
         public DateTime Expires { get; set; }
         public string Location { get; set; }
         public bool Used { get; set; }
+
+        public override bool Equals(object obj)
+        {
+            if(obj is Details details)
+            {
+                return Number == details.Number;
+            }
+
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
     }
 }
