@@ -26,6 +26,7 @@ namespace Couper
         private string _pageId;
         private bool _allSelected;
         private Settings _settings;
+        private string _usedFile;
         private string _settingsFile;
         private PropertyInfo[] _columns;
         Application _outlookApplication;
@@ -37,6 +38,7 @@ namespace Couper
         private const string TitleLocation = "סניף";
         private const string TitleDate = "תאריך";
         private const string TitleUsed = "משומש";
+        private const string TitleLink = "ללחוץ כאן";
 
         private const string Subject = "שובר על סך";
 
@@ -50,6 +52,7 @@ namespace Couper
         {
             InitializeComponent();
 
+            _usedFile = Path.Combine(System.Windows.Forms.Application.LocalUserAppDataPath, "used.txt");
             _settingsFile = Path.Combine(System.Windows.Forms.Application.LocalUserAppDataPath, "settings.ini");
         }
 
@@ -62,6 +65,9 @@ namespace Couper
                 EnableButton(tsOneNote, false);
 
                 _columns = new Details().GetType().GetProperties();
+
+                lstResults.UseHyperlinks = true;
+                lstResults.HyperlinkClicked += LstResults_HyperlinkClicked;
 
                 Generator.GenerateColumns(lstResults, typeof(Details), true);
                 lstResults.AutoResizeColumns();
@@ -83,6 +89,15 @@ namespace Couper
             {
                 Log(ex);
             }
+        }
+
+        private void LstResults_HyperlinkClicked(object sender, HyperlinkClickedEventArgs e)
+        {
+            RunSafe(() =>
+            {
+                var detail = (Details)e.Item.RowObject;
+                e.Url = detail.Link;
+            });
         }
 
         private static void FormatRow(object sender, FormatRowEventArgs e)
@@ -210,6 +225,11 @@ namespace Couper
                 lstResults.AutoResizeColumns();
 
                 UpdateSum();
+
+                var used = LoadUsed();
+                used = used.Concat(details.Where(d => d.Used).Select(d => d.Number)).ToArray();
+
+                File.WriteAllLines(_usedFile, used);
             });
         }
 
@@ -246,6 +266,16 @@ namespace Couper
             {
                 // ignored
             }
+        }
+
+        private string[] LoadUsed()
+        {
+            if (!File.Exists(_usedFile))
+            {
+                return new string[0];
+            }
+
+            return File.ReadAllLines(_usedFile);
         }
 
         private async void Application_AdvancedSearchComplete(Search search, int days)
@@ -286,18 +316,30 @@ namespace Couper
 
                 UpdateSum();
 
-                var details = items.Select(i => new Details
-                {
-                    Number = GetField(i.Body, $"{TitleCode}:"),
-                    Amount = Convert.ToInt32(GetField(i.Body, $"{TitleAmount}:").Split(' ')[0]),
-                    Expires = ParseDate(GetField(i.Body, $"{TitleExpires} ")),
-                    Location = GetField(i.Body, $"{TitleLocation}:"),
-                    Date = ParseDate(GetField(i.Body, $"{TitleDate}:")),
-                })
+                var details = items
+                    .Select(i => i.Body)
+                    .Select(i => new Details
+                    {
+                        Number = GetField(i, $"{TitleCode}:"),
+                        Amount = Convert.ToInt32(GetField(i, $"{TitleAmount}:").Split(' ')[0]),
+                        Expires = ParseDate(GetField(i, $"{TitleExpires} ")),
+                        Location = GetField(i, $"{TitleLocation}:"),
+                        Date = ParseDate(GetField(i, $"{TitleDate}:")),
+                        Link = GetField(i, TitleLink).Replace("<", "").Replace(">", "")
+                    })
                .Distinct()
                .OrderBy(i => i.Date)
                .ThenByDescending(i => Convert.ToInt32(i.Amount))
                .ToArray();
+
+                var used = LoadUsed();
+                if (used.Length > 0)
+                {
+                    foreach (var detail in details)
+                    {
+                        detail.Used = used.Contains(detail.Number);
+                    }
+                }
 
                 UpdateItems(detailsFromNote, details);
 
@@ -522,11 +564,12 @@ namespace Couper
 
             return new Details
             {
-                Amount = Convert.ToInt32(cells[1].Item1),
-                Number = cells[2].Item1,
-                Date = ParseDate(cells[3].Item1),
-                Location = cells[4].Item1,
-                Expires = ParseDate(cells[5].Item1),
+                Amount = Convert.ToInt32(cells[1].Item1.Item1),
+                Number = cells[2].Item1.Item1,
+                Date = ParseDate(cells[3].Item1.Item1),
+                Location = cells[4].Item1.Item1,
+                Expires = ParseDate(cells[5].Item1.Item1),
+                Link = cells[2].Item1.Item2,
                 Used = cells.Any(c => c.Item2)
             };
         }
@@ -541,7 +584,7 @@ namespace Couper
             foreach (var row in rows)
             {
                 var cells = row.Descendants(ns + "Cell")
-                    .Select(c => (GetCellValue(c), IsComplete(ns, c))).ToArray();
+                    .Select(c => (GetCellValue(c).Item1, IsComplete(ns, c))).ToArray();
 
                 details.Add(ParseRow(ns, row));
             }
@@ -549,15 +592,22 @@ namespace Couper
             return details.ToArray();
         }
 
-        private string GetCellValue(XElement cell)
+        private (string, string) GetCellValue(XElement cell)
         {
             if (!cell.Value.Contains(">"))
             {
-                return cell.Value;
+                return (cell.Value, null);
+            }
+
+            var data = cell.Value.Split('>')[1].Split('<')[0];
+
+            if (cell.Value.Contains("href"))
+            {
+                return (data, cell.Value.Split('\"')[1]);
             }
 
             // change "<span\nstyle='direction:ltr;unicode-bidi:embed' lang=en-US>200</span>" to 200
-            return cell.Value.Split('>')[1].Split('<')[0];
+            return (data, null);
         }
 
         private bool IsComplete(XNamespace ns, XElement cell)
@@ -661,16 +711,23 @@ namespace Couper
 
                 foreach (var detail in details)
                 {
-                    if (content.Contains(detail.Number))
+                    var existing = rows.FirstOrDefault(r => r.Descendants(ns + "Cell").Any(c => c.Value.Contains(detail.Number)));
+                    if (existing != null)
                     {
-                        continue;
+                        var parsed = ParseRow(ns, existing);
+                        if (parsed.Used == detail.Used)
+                        {
+                            continue;
+                        }
+
+                        rows.Remove(existing);
                     }
 
                     rows.Add(
                     new XElement(ns + "Row",
-                        BuildCell(ns, "", true),
+                        BuildCell(ns, "", true, detail.Used),
                         BuildCell(ns, detail.Amount.ToString()),
-                        BuildCell(ns, detail.Number),
+                        BuildCell(ns, detail.Number, link: detail.Link),
                         BuildCell(ns, detail.Date.ToString(DateFormat)),
                         BuildCell(ns, detail.Location),
                         BuildCell(ns, detail.Expires.ToString(DateFormat))
@@ -769,7 +826,7 @@ namespace Couper
 
             var columns = new List<XElement>();
 
-            for (int i = 0; i < 5; ++i)
+            for (int i = 0; i < 6; ++i)
             {
                 columns.Add(new XElement(ns + "Column",
                   new XAttribute("index", $"{i}"),
@@ -808,11 +865,16 @@ namespace Couper
             return newPage.ToString();
         }
 
-        private XElement BuildCell(XNamespace ns, string data, bool addCheck = false)
+        private XElement BuildCell(XNamespace ns, string data, bool addCheck = false, bool isChecked = false, string link = null)
         {
             var tag = new XElement(ns + "Tag",
                                 new XAttribute("index", "0"),
-                                new XAttribute("completed", "false"));
+                                new XAttribute("completed", isChecked ? "true" : "false"));
+
+            if (!string.IsNullOrEmpty(link))
+            {
+                data = $"<a href=\"{link}\">{data}</a>";
+            }
 
             var child = new XElement(ns + "OE",
                                 new XElement(ns + "T",
@@ -884,15 +946,17 @@ namespace Couper
         [OLVColumn(AspectToStringFormat = "{0:d}")]
         public DateTime Date { get; set; }
         public int Amount { get; set; }
+        [OLVColumn(Hyperlink = true)]
         public string Number { get; set; }
         [OLVColumn(AspectToStringFormat = "{0:d}")]
         public DateTime Expires { get; set; }
         public string Location { get; set; }
         public bool Used { get; set; }
+        public string Link;
 
         public override bool Equals(object obj)
         {
-            if(obj is Details details)
+            if (obj is Details details)
             {
                 return Number == details.Number;
             }
