@@ -33,9 +33,12 @@ namespace Couper
         private Microsoft.Office.Interop.OneNote.Application _app;
 
         private const string TitleCode = "קוד שובר";
+        private const string TitleCode2 = "שובר לרכישה";
         private const string TitleAmount = "סכום ההזמנה";
+        private const string TitleAmount2 = "החיוב בסיבוס שלך";
         private const string TitleExpires = "תוקף";
         private const string TitleLocation = "סניף";
+        private const string TitleLocation2 = "קיבלנו את הזמנת השובר שלך";
         private const string TitleDate = "תאריך";
         private const string TitleUsed = "משומש";
         private const string TitleLink = "ללחוץ כאן";
@@ -135,10 +138,38 @@ namespace Couper
         {
             if (!body.Contains(name))
             {
-                throw new Exception("Failed to find field in body - " + name);
+                return null;
             }
 
-            return body.Split(new[] { name }, StringSplitOptions.None)[1].Split('\r')[0].Trim();
+            return body.Split(new[] { name }, StringSplitOptions.None)[1].Trim().Split('\r')[0].Trim();
+        }
+
+        private string GetField(string body, string name, string name2)
+        {
+            var res = GetField(body, name);
+            try
+            {
+                if (res != null)
+                {
+                    return res;
+                }
+
+                if (name2 != null)
+                {
+                    res = GetField(body, name2);
+                    if (res != null)
+                    {
+                        return res;
+                    }
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Log(ex);
+                return null;
+            }
         }
 
         private int IndexOf(string col)
@@ -317,15 +348,14 @@ namespace Couper
                 UpdateSum();
 
                 var details = items
-                    .Select(i => i.Body)
                     .Select(i => new Details
                     {
-                        Number = GetField(i, $"{TitleCode}:"),
-                        Amount = Convert.ToInt32(GetField(i, $"{TitleAmount}:").Split(' ')[0]),
-                        Expires = ParseDate(GetField(i, $"{TitleExpires} ")),
-                        Location = GetField(i, $"{TitleLocation}:"),
-                        Date = ParseDate(GetField(i, $"{TitleDate}:")),
-                        Link = GetField(i, TitleLink).Replace("<", "").Replace(">", "")
+                        Number = GetField(i.Body, TitleCode + ":", TitleCode2),
+                        Amount = Convert.ToInt32(GetField(i.Body, TitleAmount + ":", TitleAmount2 + ":").Split(' ')[0].Replace("₪", "").Split('.')[0]),
+                        Expires = ParseDate(GetField(i.Body, TitleExpires + " ", null) ?? i.ReceivedTime.ToString(DateFormat)),
+                        Location = GetField(i.Body, TitleLocation + ":", TitleLocation2),
+                        Date = ParseDate(GetField(i.Body, TitleDate + ":", null) ?? i.ReceivedTime.ToString(DateFormat)),
+                        Link = GetField(i.Body, TitleLink, null).Replace("<", "").Replace(">", "")
                     })
                .Distinct()
                .OrderBy(i => i.Date)
