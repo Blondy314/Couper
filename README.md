@@ -1,7 +1,7 @@
 # Couper
 Management of Cibus Coupons (Coupon + Super = Couper)
 
-Fetches the data about Cibus coupons from the mail and shows them in a convinient manner.
+Fetches the data about Cibus coupons from the mail and shows them in a convenient manner.
 Syncs the data to a OneNote page which can be shared with whoever you'd like (for instance family members that use the coupons) and shows the amount left.
 
 Coupons that are about to expire are shown in Red.
