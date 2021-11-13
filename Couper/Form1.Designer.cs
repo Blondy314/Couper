@@ -58,6 +58,7 @@ namespace Couper
             this.toolStripLabel5 = new System.Windows.Forms.ToolStripLabel();
             this.tsNotebook = new System.Windows.Forms.ToolStripTextBox();
             this.lnkOneNote = new System.Windows.Forms.ToolStripLabel();
+            this.chkHideUsed = new System.Windows.Forms.CheckBox();
             this.toolStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -124,6 +125,7 @@ namespace Couper
             // txtFolder
             // 
             this.txtFolder.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.txtFolder.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.txtFolder.Name = "txtFolder";
             this.txtFolder.Size = new System.Drawing.Size(100, 38);
             this.txtFolder.Text = "Cibus";
@@ -147,6 +149,7 @@ namespace Couper
             // txtDays
             // 
             this.txtDays.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.txtDays.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.txtDays.Name = "txtDays";
             this.txtDays.Size = new System.Drawing.Size(50, 38);
             this.txtDays.Text = "30";
@@ -203,14 +206,14 @@ namespace Couper
             this.tsSync.Image = ((System.Drawing.Image)(resources.GetObject("tsSync.Image")));
             this.tsSync.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.tsSync.Name = "tsSync";
-            this.tsSync.Size = new System.Drawing.Size(72, 29);
+            this.tsSync.Size = new System.Drawing.Size(72, 33);
             this.tsSync.Text = "Sync";
             this.tsSync.Click += new System.EventHandler(this.tsSync_Click);
             // 
             // splitContainer1
             // 
             this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.splitContainer1.Location = new System.Drawing.Point(0, 72);
+            this.splitContainer1.Location = new System.Drawing.Point(0, 76);
             this.splitContainer1.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.splitContainer1.Name = "splitContainer1";
             this.splitContainer1.Orientation = System.Windows.Forms.Orientation.Horizontal;
@@ -222,8 +225,8 @@ namespace Couper
             // splitContainer1.Panel2
             // 
             this.splitContainer1.Panel2.Controls.Add(this.lstLog);
-            this.splitContainer1.Size = new System.Drawing.Size(1537, 558);
-            this.splitContainer1.SplitterDistance = 320;
+            this.splitContainer1.Size = new System.Drawing.Size(1537, 554);
+            this.splitContainer1.SplitterDistance = 317;
             this.splitContainer1.SplitterWidth = 5;
             this.splitContainer1.TabIndex = 5;
             // 
@@ -238,7 +241,7 @@ namespace Couper
             this.lstResults.Location = new System.Drawing.Point(0, 0);
             this.lstResults.Name = "lstResults";
             this.lstResults.ShowGroups = false;
-            this.lstResults.Size = new System.Drawing.Size(1537, 320);
+            this.lstResults.Size = new System.Drawing.Size(1537, 317);
             this.lstResults.TabIndex = 0;
             this.lstResults.UseCompatibleStateImageBehavior = false;
             this.lstResults.View = System.Windows.Forms.View.Details;
@@ -255,7 +258,7 @@ namespace Couper
             this.lstLog.Location = new System.Drawing.Point(0, 0);
             this.lstLog.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.lstLog.Name = "lstLog";
-            this.lstLog.Size = new System.Drawing.Size(1537, 233);
+            this.lstLog.Size = new System.Drawing.Size(1537, 232);
             this.lstLog.TabIndex = 0;
             this.lstLog.UseCompatibleStateImageBehavior = false;
             this.lstLog.View = System.Windows.Forms.View.Details;
@@ -280,7 +283,7 @@ namespace Couper
             this.lnkOneNote});
             this.toolStrip2.Location = new System.Drawing.Point(0, 38);
             this.toolStrip2.Name = "toolStrip2";
-            this.toolStrip2.Size = new System.Drawing.Size(1537, 34);
+            this.toolStrip2.Size = new System.Drawing.Size(1537, 38);
             this.toolStrip2.TabIndex = 1;
             this.toolStrip2.Text = "toolStrip2";
             // 
@@ -289,21 +292,22 @@ namespace Couper
             this.tsOneNote.Image = ((System.Drawing.Image)(resources.GetObject("tsOneNote.Image")));
             this.tsOneNote.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.tsOneNote.Name = "tsOneNote";
-            this.tsOneNote.Size = new System.Drawing.Size(108, 29);
+            this.tsOneNote.Size = new System.Drawing.Size(108, 33);
             this.tsOneNote.Text = "OneNote";
             this.tsOneNote.Click += new System.EventHandler(this.tsOneNote_Click);
             // 
             // toolStripLabel5
             // 
             this.toolStripLabel5.Name = "toolStripLabel5";
-            this.toolStripLabel5.Size = new System.Drawing.Size(97, 29);
+            this.toolStripLabel5.Size = new System.Drawing.Size(97, 33);
             this.toolStripLabel5.Text = "Notebook:";
             // 
             // tsNotebook
             // 
             this.tsNotebook.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.tsNotebook.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.tsNotebook.Name = "tsNotebook";
-            this.tsNotebook.Size = new System.Drawing.Size(188, 34);
+            this.tsNotebook.Size = new System.Drawing.Size(188, 38);
             this.tsNotebook.TextBoxTextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             // 
             // lnkOneNote
@@ -311,15 +315,28 @@ namespace Couper
             this.lnkOneNote.ForeColor = System.Drawing.SystemColors.MenuHighlight;
             this.lnkOneNote.IsLink = true;
             this.lnkOneNote.Name = "lnkOneNote";
-            this.lnkOneNote.Size = new System.Drawing.Size(20, 29);
+            this.lnkOneNote.Size = new System.Drawing.Size(20, 33);
             this.lnkOneNote.Text = "?";
             this.lnkOneNote.Click += new System.EventHandler(this.lnkOneNote_Click);
+            // 
+            // chkHideUsed
+            // 
+            this.chkHideUsed.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.chkHideUsed.AutoSize = true;
+            this.chkHideUsed.Location = new System.Drawing.Point(1135, 7);
+            this.chkHideUsed.Name = "chkHideUsed";
+            this.chkHideUsed.Size = new System.Drawing.Size(110, 24);
+            this.chkHideUsed.TabIndex = 6;
+            this.chkHideUsed.Text = "Hide Used";
+            this.chkHideUsed.UseVisualStyleBackColor = true;
+            this.chkHideUsed.CheckedChanged += new System.EventHandler(this.chkHideUsed_CheckedChanged);
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1537, 630);
+            this.Controls.Add(this.chkHideUsed);
             this.Controls.Add(this.splitContainer1);
             this.Controls.Add(this.toolStrip2);
             this.Controls.Add(this.toolStrip1);
@@ -372,6 +389,7 @@ namespace Couper
         private ObjectListView lstResults;
         private System.Windows.Forms.ToolStripButton tsOneNote;
         private System.Windows.Forms.ToolStripLabel lnkFolder;
+        private System.Windows.Forms.CheckBox chkHideUsed;
     }
 }
 

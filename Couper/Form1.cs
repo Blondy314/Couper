@@ -24,12 +24,13 @@ namespace Couper
     public partial class Form1 : Form
     {
         private string _pageId;
+        private string _usedFile;
+        private Details[] _details;
         private bool _allSelected;
         private Settings _settings;
-        private string _usedFile;
         private string _settingsFile;
         private PropertyInfo[] _columns;
-        Application _outlookApplication;
+        private Application _outlookApplication;
         private Microsoft.Office.Interop.OneNote.Application _app;
 
         private const string TitleCode = "קוד שובר";
@@ -63,6 +64,9 @@ namespace Couper
         {
             try
             {
+
+                Text = "Couper " + Properties.Settings.Default.Version;
+
                 LoadSettings();
 
                 EnableButton(tsOneNote, false);
@@ -236,8 +240,6 @@ namespace Couper
                     return;
                 }
 
-                lstResults.Items.Clear();
-
                 if (detailsFromNote != null)
                 {
                     foreach (var detail in details)
@@ -250,10 +252,9 @@ namespace Couper
                     }
                 }
 
-                lstResults.AddObjects(details);
-                lstResults.CheckAll();
+                _details = details;
 
-                lstResults.AutoResizeColumns();
+                UpdateInGui(details);
 
                 UpdateSum();
 
@@ -262,6 +263,16 @@ namespace Couper
 
                 File.WriteAllLines(_usedFile, used);
             });
+        }
+
+        private void UpdateInGui(Details[] details)
+        {
+            lstResults.Items.Clear();
+
+            lstResults.AddObjects(details);
+            lstResults.CheckAll();
+
+            lstResults.AutoResizeColumns();
         }
 
         private void Log(Exception ex)
@@ -736,7 +747,6 @@ namespace Couper
                 }
 
                 var rows = table.Descendants(ns + "Row").ToList();
-
                 table.Descendants(ns + "Row").Remove();
 
                 foreach (var detail in details)
@@ -769,6 +779,11 @@ namespace Couper
 
                 foreach (var row in rows.Skip(1).OrderBy(r => ParseRow(ns, r).Date))
                 {
+                    if(ParseRow(ns, row).Used)
+                    {
+                        continue;
+                    }
+
                     table.Add(row);
                 }
 
@@ -962,6 +977,26 @@ namespace Couper
         private void lnkFolder_Click(object sender, EventArgs e)
         {
             MessageBox.Show(this, MailMessage(), "Cibus Folder", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void chkHideUsed_CheckedChanged(object sender, EventArgs e)
+        {
+            RunSafe(() =>
+            {
+                if (_details == null || _details.All(d => !d.Used))
+                {
+                    return;
+                }
+
+                var details = _details;
+
+                if (chkHideUsed.Checked == true)
+                {
+                    details = _details.Where(d => !d.Used).ToArray();
+                }
+
+                UpdateInGui(details);
+            });
         }
     }
 
