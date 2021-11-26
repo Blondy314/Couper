@@ -320,6 +320,11 @@ namespace Couper
             return File.ReadAllLines(_usedFile);
         }
 
+        private string SplitNumber(string number)
+        {
+            return string.Join(" ", Enumerable.Range(0, number.Length / 4).Select(i => number.Substring(i * 4, 4)));
+        }
+
         private async void Application_AdvancedSearchComplete(Search search, int days)
         {
             try
@@ -361,7 +366,7 @@ namespace Couper
                 var details = items
                     .Select(i => new Details
                     {
-                        Number = GetField(i.Body, TitleCode + ":", TitleCode2),
+                        Number = SplitNumber(GetField(i.Body, TitleCode + ":", TitleCode2)),
                         Amount = Convert.ToInt32(GetField(i.Body, TitleAmount + ":", TitleAmount2 + ":").Split(' ')[0].Replace("₪", "").Split('.')[0]),
                         Expires = ParseDate(GetField(i.Body, TitleExpires + " ", null) ?? i.ReceivedTime.ToString(DateFormat)),
                         Location = GetField(i.Body, TitleLocation + ":", TitleLocation2),
@@ -378,7 +383,7 @@ namespace Couper
                 {
                     foreach (var detail in details)
                     {
-                        detail.Used = used.Contains(detail.Number);
+                        detail.Used = used.Contains(detail.Number.Replace(" ", ""));
                     }
                 }
 
@@ -607,9 +612,9 @@ namespace Couper
             {
                 Amount = Convert.ToInt32(cells[1].Item1.Item1),
                 Number = cells[2].Item1.Item1,
-                Date = ParseDate(cells[3].Item1.Item1),
+                Expires = ParseDate(cells[3].Item1.Item1),
                 Location = cells[4].Item1.Item1,
-                Expires = ParseDate(cells[5].Item1.Item1),
+                Date = ParseDate(cells[5].Item1.Item1),
                 Link = cells[2].Item1.Item2,
                 Used = cells.Any(c => c.Item2)
             };
@@ -768,9 +773,9 @@ namespace Couper
                         BuildCell(ns, "", true, detail.Used),
                         BuildCell(ns, detail.Amount.ToString()),
                         BuildCell(ns, detail.Number, link: detail.Link),
-                        BuildCell(ns, detail.Date.ToString(DateFormat)),
+                        BuildCell(ns, detail.Expires.ToString(DateFormat)),
                         BuildCell(ns, detail.Location),
-                        BuildCell(ns, detail.Expires.ToString(DateFormat))
+                        BuildCell(ns, detail.Date.ToString(DateFormat))
                         ));
                 }
 
@@ -882,9 +887,9 @@ namespace Couper
                 BuildCell(ns, ""),
                 BuildCell(ns, TitleAmount),
                 BuildCell(ns, TitleCode),
-                BuildCell(ns, TitleDate),
+                BuildCell(ns, TitleExpires),
                 BuildCell(ns, TitleLocation),
-                BuildCell(ns, TitleExpires));
+                BuildCell(ns, TitleDate));
 
             var table = new XElement(ns + "Table",
                   new XAttribute("bordersVisible", "true"),
