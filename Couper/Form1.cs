@@ -71,6 +71,8 @@ namespace Couper
 
                 EnableButton(tsOneNote, false);
 
+                Log(_usedFile);
+
                 _columns = new Details().GetType().GetProperties();
 
                 lstResults.UseHyperlinks = true;
@@ -145,7 +147,13 @@ namespace Couper
                 return null;
             }
 
-            return body.Split(new[] { name }, StringSplitOptions.None)[1].Trim().Split('\r')[0].Trim();
+            var field = body.Split(new[] { name }, StringSplitOptions.None)[1].Trim().Split('\r').Select(r => r.Trim()).FirstOrDefault(r => r.Length > 0 && r != ",");
+            if(field == null)
+            {
+                throw new Exception("Invalid body for field " + name);
+            }
+
+            return field;
         }
 
         private string GetField(string body, string name, string name2)
@@ -234,6 +242,11 @@ namespace Couper
         {
             RunSafe(() =>
             {
+                if (details == null)
+                {
+                    throw new Exception("No details from OneNote");
+                }
+
                 if (InvokeRequired)
                 {
                     BeginInvoke((Action)(() => UpdateItems(detailsFromNote, details)));
@@ -270,6 +283,12 @@ namespace Couper
             lstResults.Items.Clear();
 
             lstResults.AddObjects(details);
+
+            if (lstResults.Items.Count == 0)
+            {
+                return;
+            }
+
             lstResults.CheckAll();
 
             lstResults.AutoResizeColumns();
@@ -608,9 +627,13 @@ namespace Couper
                     .Select(c => (GetCellValue(c), IsComplete(ns, c)))
                     .ToArray();
 
+            var amount = 0;
+
+            int.TryParse(cells[1].Item1.Item1, out amount);
+
             return new Details
             {
-                Amount = Convert.ToInt32(cells[1].Item1.Item1),
+                Amount = amount,
                 Number = cells[2].Item1.Item1,
                 Expires = ParseDate(cells[3].Item1.Item1),
                 Location = cells[4].Item1.Item1,
@@ -736,7 +759,13 @@ namespace Couper
                 var doc = XDocument.Parse(xml);
                 var outline = doc.Descendants(ns + "Outline").FirstOrDefault();
 
-                var table = outline.Descendants(ns + "Table").First();
+                IEnumerable<XElement> tables = outline.Descendants(ns + "Table");
+                if (!tables.Any())
+                {
+                    throw new Exception("Table is empty");
+                }
+
+                var table = tables.First();
                 var content = outline.ToString();
 
                 var existingDetails = ParseDetails(ns, outline);
@@ -756,7 +785,7 @@ namespace Couper
 
                 foreach (var detail in details)
                 {
-                    var existing = rows.FirstOrDefault(r => r.Descendants(ns + "Cell").Any(c => c.Value.Contains(detail.Number)));
+                    var existing = rows.FirstOrDefault(r => r.Descendants(ns + "Cell").Any(c => detail.Number != "" && c.Value.Contains(detail.Number)));
                     if (existing != null)
                     {
                         var parsed = ParseRow(ns, existing);
@@ -784,7 +813,7 @@ namespace Couper
 
                 foreach (var row in rows.Skip(1).OrderBy(r => ParseRow(ns, r).Date))
                 {
-                    if(ParseRow(ns, row).Used)
+                    if (ParseRow(ns, row).Used)
                     {
                         continue;
                     }
