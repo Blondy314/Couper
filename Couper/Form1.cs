@@ -51,7 +51,6 @@ namespace Couper
         private const string Sum = "Sum";
         private const string DateFormat = "dd/MM/yyyy";
 
-
         public Form1()
         {
             InitializeComponent();
@@ -148,7 +147,7 @@ namespace Couper
             }
 
             var field = body.Split(new[] { name }, StringSplitOptions.None)[1].Trim().Split('\r').Select(r => r.Trim()).FirstOrDefault(r => r.Length > 0 && r != ",");
-            if(field == null)
+            if (field == null)
             {
                 throw new Exception("Invalid body for field " + name);
             }
@@ -228,6 +227,12 @@ namespace Couper
 
                 SaveSettings();
 
+                if (lstResults.Items.Count > 0)
+                {
+                    var items = lstResults.Objects.Cast<Details>().ToArray();
+                    UpdateItems(null, items);
+                }
+
                 var days = Convert.ToInt32(txtDays.Text);
 
                 await Task.Run(() => GetItems(days, txtFolder.Text));
@@ -253,6 +258,8 @@ namespace Couper
                     return;
                 }
 
+                var used = LoadUsed();
+
                 if (detailsFromNote != null)
                 {
                     foreach (var detail in details)
@@ -261,6 +268,11 @@ namespace Couper
                         if (exist != null)
                         {
                             detail.Used = exist.Used;
+                        }
+
+                        if (used.Contains(detail.Number))
+                        {
+                            detail.Used = true;
                         }
                     }
                 }
@@ -271,8 +283,7 @@ namespace Couper
 
                 UpdateSum();
 
-                var used = LoadUsed();
-                used = used.Concat(details.Where(d => d.Used).Select(d => d.Number)).ToArray();
+                used = used.Concat(details.Where(d => d.Used).Select(d => d.Number)).Distinct().ToArray();
 
                 File.WriteAllLines(_usedFile, used);
             });
@@ -336,7 +347,7 @@ namespace Couper
                 return new string[0];
             }
 
-            return File.ReadAllLines(_usedFile);
+            return File.ReadAllLines(_usedFile).Distinct().ToArray();
         }
 
         private string SplitNumber(string number)
@@ -371,11 +382,8 @@ namespace Couper
                         continue;
                     }
 
-                    if (item.Sender?.Name?.Contains("Cibus") == true)
-                    {
-                        items.Add(item);
-                        Log($"{item.Subject} ({item.ReceivedTime})");
-                    }
+                    items.Add(item);
+                    Log($"{item.Subject} ({item.ReceivedTime})");
                 }
 
                 var detailsFromNote = SyncToOneNote(null, false);
@@ -467,7 +475,7 @@ namespace Couper
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "An eexception is thrown");
+                MessageBox.Show(ex.Message, "An exception is thrown");
             }
             finally
             {
@@ -874,7 +882,6 @@ namespace Couper
                 tsProg.Style = busy ? ProgressBarStyle.Marquee : ProgressBarStyle.Continuous;
             });
         }
-
 
         private string CreateNewPage(string pageName,
             XNamespace ns,
