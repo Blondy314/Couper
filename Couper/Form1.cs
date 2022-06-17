@@ -124,6 +124,12 @@ namespace Couper
                 return;
             }
 
+            if (msg.Expires - DateTime.Now < TimeSpan.FromDays(14))
+            {
+                e.Item.ForeColor = Color.OrangeRed;
+                return;
+            }
+
             e.Item.ForeColor = Color.DarkBlue;
 
         }
