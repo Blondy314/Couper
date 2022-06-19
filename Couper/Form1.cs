@@ -358,6 +358,12 @@ namespace Couper
 
         private string SplitNumber(string number)
         {
+            if (number == null)
+            {
+                Log("Failed to find coupon code");
+                return "";
+            }
+
             return string.Join(" ", Enumerable.Range(0, number.Length / 4).Select(i => number.Substring(i * 4, 4)));
         }
 
