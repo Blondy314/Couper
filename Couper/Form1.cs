@@ -34,7 +34,7 @@ namespace Couper
         private Microsoft.Office.Interop.OneNote.Application _app;
 
         private const string TitleCode = "קוד שובר";
-        private const string TitleCode2 = "שובר לרכישה";
+        private const string TitleCode2 = "לרכישה";
         private const string TitleAmount = "סכום ההזמנה";
         private const string TitleAmount2 = "החיוב בסיבוס שלך";
         private const string TitleExpires = "תוקף";
