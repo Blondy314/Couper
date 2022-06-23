@@ -43,6 +43,8 @@ namespace Couper
         private const string TitleDate = "תאריך";
         private const string TitleUsed = "משומש";
         private const string TitleLink = "ללחוץ כאן";
+        private const string TenBis = "תן ביס";
+        private const string Sodexo = "סודסקו";
 
         private const string Subject = "שובר על סך";
 
@@ -63,7 +65,6 @@ namespace Couper
         {
             try
             {
-
                 Text = "Couper " + Properties.Settings.Default.Version;
 
                 LoadSettings();
@@ -153,6 +154,7 @@ namespace Couper
             }
 
             var field = body.Split(new[] { name }, StringSplitOptions.None)[1].Trim().Split('\r').Select(r => r.Trim()).FirstOrDefault(r => r.Length > 0 && r != ",");
+
             if (field == null)
             {
                 throw new Exception("Invalid body for field " + name);
@@ -161,7 +163,28 @@ namespace Couper
             return field;
         }
 
-        private string GetField(string body, string name, string name2)
+        private string GetFieldTenBis(string[] lines, string name, bool allLine = false, bool last = true)
+        {
+            var line = lines.FirstOrDefault(l => l.Contains(name));
+            if (line == null)
+            {
+                throw new Exception("Invalid body for field " + name);
+            }
+
+            line = line.Trim();
+
+            if (allLine)
+            {
+                return line;
+            }
+
+            var split = line.Split(new[] { name }, StringSplitOptions.RemoveEmptyEntries);
+            var field = last ? split.Last() : split.First();
+
+            return field.Trim();
+        }
+
+        private string GetField(string body, string name, string name2 = null)
         {
             var res = GetField(body, name);
             try
@@ -367,6 +390,41 @@ namespace Couper
             return string.Join(" ", Enumerable.Range(0, number.Length / 4).Select(i => number.Substring(i * 4, 4)));
         }
 
+        private Details ParseBody(string body, string time)
+        {
+            if (body.Contains(TenBis))
+            {
+                var lines = body
+                        .Replace("\r", "")
+                        .Replace("\t", "")
+                        .Split(new[] { "\n" }, StringSplitOptions.RemoveEmptyEntries)
+                        .Where(i => i != " ")
+                        .ToArray();
+
+                return new Details
+                {
+                    Number = SplitNumber(GetFieldTenBis(lines, "מספר ברקוד", last: false)),
+                    Amount = Convert.ToInt32(GetFieldTenBis(lines, "₪", true).Split(' ')[1].Replace("₪", "").Split('.')[0]),
+                    Expires = ParseDate(GetFieldTenBis(lines, "השובר ניתן למימוש עד לתאריך") ?? time),
+                    Location = GetFieldTenBis(lines, "הזמנתך מ"),
+                    Date = ParseDate((GetField(body, "התקבלה בתאריך") ?? time).Split(' ')[0]),
+                    Link = GetFieldTenBis(lines, "voucher-image", true).Replace("<", "").Replace(">", ""),
+                    Source = TenBis
+                };
+            }
+
+            return new Details
+            {
+                Number = SplitNumber(GetField(body, TitleCode + ":", TitleCode2)),
+                Amount = Convert.ToInt32(GetField(body, TitleAmount + ":", TitleAmount2 + ":").Split(' ')[0].Replace("₪", "").Split('.')[0]),
+                Expires = ParseDate(GetField(body, TitleExpires + " ") ?? time),
+                Location = GetField(body, TitleLocation + ":", TitleLocation2),
+                Date = ParseDate(GetField(body, TitleDate + ":") ?? time),
+                Link = GetField(body, TitleLink).Replace("<", "").Replace(">", ""),
+                Source = Sodexo
+            };
+        }
+
         private async void Application_AdvancedSearchComplete(Search search, int days)
         {
             try
@@ -403,19 +461,11 @@ namespace Couper
                 UpdateSum();
 
                 var details = items
-                    .Select(i => new Details
-                    {
-                        Number = SplitNumber(GetField(i.Body, TitleCode + ":", TitleCode2)),
-                        Amount = Convert.ToInt32(GetField(i.Body, TitleAmount + ":", TitleAmount2 + ":").Split(' ')[0].Replace("₪", "").Split('.')[0]),
-                        Expires = ParseDate(GetField(i.Body, TitleExpires + " ", null) ?? i.ReceivedTime.ToString(DateFormat)),
-                        Location = GetField(i.Body, TitleLocation + ":", TitleLocation2),
-                        Date = ParseDate(GetField(i.Body, TitleDate + ":", null) ?? i.ReceivedTime.ToString(DateFormat)),
-                        Link = GetField(i.Body, TitleLink, null).Replace("<", "").Replace(">", "")
-                    })
-               .Distinct()
-               .OrderBy(i => i.Date)
-               .ThenByDescending(i => Convert.ToInt32(i.Amount))
-               .ToArray();
+                   .Select(i => ParseBody(i.Body, i.ReceivedTime.ToString(DateFormat)))
+                   .Distinct()
+                   .OrderBy(i => i.Date)
+                   .ThenByDescending(i => Convert.ToInt32(i.Amount))
+                   .ToArray();
 
                 var used = LoadUsed();
                 if (used.Length > 0)
@@ -508,17 +558,24 @@ namespace Couper
 
         private static DateTime ParseDate(string date)
         {
-            if (DateTime.TryParseExact(date, DateFormat, CultureInfo.CurrentCulture, DateTimeStyles.None, out var result))
+            try
             {
-                return result;
-            }
+                if (DateTime.TryParseExact(date, DateFormat, CultureInfo.CurrentCulture, DateTimeStyles.None, out var result))
+                {
+                    return result;
+                }
 
-            if (DateTime.TryParseExact(date, "dd/M/yyyy", CultureInfo.CurrentCulture, DateTimeStyles.None, out result))
+                if (DateTime.TryParseExact(date, "dd/M/yyyy", CultureInfo.CurrentCulture, DateTimeStyles.None, out result))
+                {
+                    return result;
+                }
+
+                return DateTime.Parse(date);
+            }
+            catch
             {
-                return result;
+                throw new Exception("Failed to parse date - " + date);
             }
-
-            return DateTime.Parse(date);
         }
 
         private void RunSafe(Action action)
@@ -1071,6 +1128,7 @@ namespace Couper
         public string Location { get; set; }
         public bool Used { get; set; }
         public string Link;
+        public string Source { get; set; }
 
         public override bool Equals(object obj)
         {
