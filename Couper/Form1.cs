@@ -50,7 +50,7 @@ namespace Couper
         private const string SubjectTenBis = "הזמנתך מ";
 
         private const string PageName = "Couper";
-        private const string SectionName = "Shopping";
+        private const string SectionName = "shopping";
         private const string Sum = "Sum";
         private const string DateFormat = "dd/MM/yyyy";
 
@@ -820,7 +820,7 @@ namespace Couper
                     throw new Exception("Failed to find notebook " + _settings.Notebook);
                 }
 
-                var section = notebook.Descendants(ns + "Section").Where(n => n.Attribute("name").Value == SectionName).FirstOrDefault();
+                var section = notebook.Descendants(ns + "Section").Where(n => n.Attribute("name").Value.ToLower() == SectionName).FirstOrDefault();
                 if (section == null)
                 {
                     throw new Exception($"Failed to find section {SectionName}. Please create it under {_settings.Notebook}");
