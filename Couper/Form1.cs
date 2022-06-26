@@ -575,7 +575,14 @@ namespace Couper
         {
             try
             {
+                date = date.Replace(".", "/");
+
                 if (DateTime.TryParseExact(date, DateFormat, CultureInfo.CurrentCulture, DateTimeStyles.None, out var result))
+                {
+                    return result;
+                }
+
+                if (DateTime.TryParseExact(date, "dd/MM/yy", CultureInfo.CurrentCulture, DateTimeStyles.None, out result))
                 {
                     return result;
                 }
