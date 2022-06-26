@@ -47,6 +47,7 @@ namespace Couper
         private const string Sodexo = "סודסקו";
 
         private const string Subject = "שובר על סך";
+        private const string SubjectTenBis = "הזמנתך מ";
 
         private const string PageName = "Couper";
         private const string SectionName = "Shopping";
@@ -165,23 +166,31 @@ namespace Couper
 
         private string GetFieldTenBis(string[] lines, string name, bool allLine = false, bool last = true)
         {
-            var line = lines.FirstOrDefault(l => l.Contains(name));
-            if (line == null)
+            try
             {
-                throw new Exception("Invalid body for field " + name);
+                var line = lines.FirstOrDefault(l => l.Contains(name));
+                if (line == null)
+                {
+                    throw new Exception("Invalid body for field " + name);
+                }
+
+                line = line.Trim();
+
+                if (allLine)
+                {
+                    return line;
+                }
+
+                var split = line.Split(new[] { name }, StringSplitOptions.RemoveEmptyEntries);
+                var field = last ? split.Last() : split.First();
+
+                return field.Trim();
             }
-
-            line = line.Trim();
-
-            if (allLine)
+            catch(Exception ex)
             {
-                return line;
+                Log($"Failed to parse {name} - {ex.Message}");
+                return "";
             }
-
-            var split = line.Split(new[] { name }, StringSplitOptions.RemoveEmptyEntries);
-            var field = last ? split.Last() : split.First();
-
-            return field.Trim();
         }
 
         private string GetField(string body, string name, string name2 = null)
@@ -269,6 +278,8 @@ namespace Couper
             catch (Exception ex)
             {
                 Log(ex);
+                EnableButton(btnGo, true);
+                SetProg(false);
             }
         }
 
@@ -404,7 +415,7 @@ namespace Couper
                 return new Details
                 {
                     Number = SplitNumber(GetFieldTenBis(lines, "מספר ברקוד", last: false)),
-                    Amount = Convert.ToInt32(GetFieldTenBis(lines, "₪", true).Split(' ')[1].Replace("₪", "").Split('.')[0]),
+                    Amount = Convert.ToInt32(GetFieldTenBis(lines, "₪").Split('.')[0]),
                     Expires = ParseDate(GetFieldTenBis(lines, "השובר ניתן למימוש עד לתאריך") ?? time),
                     Location = GetFieldTenBis(lines, "הזמנתך מ"),
                     Date = ParseDate((GetField(body, "התקבלה בתאריך") ?? time).Split(' ')[0]),
@@ -447,7 +458,7 @@ namespace Couper
                     }
 
                     var subject = item.Subject;
-                    if (!subject.Contains(Subject))
+                    if (!subject.Contains(Subject) && !subject.Contains(SubjectTenBis))
                     {
                         continue;
                     }
@@ -512,7 +523,7 @@ namespace Couper
             string scope = null;
             var dateStart = DateTime.Now.AddDays(-1 * days);
 
-            string filter = $"urn:schemas:mailheader:subject LIKE \'%{Subject}%\' AND urn:schemas:httpmail:datereceived > '{dateStart}'";
+            string filter = $"(urn:schemas:mailheader:subject LIKE \'%{Subject}%\' OR urn:schemas:mailheader:subject LIKE \'%{SubjectTenBis}%\') AND urn:schemas:httpmail:datereceived > '{dateStart}'";
 
             Search advancedSearch = null;
             NameSpace ns = null;
@@ -526,6 +537,10 @@ namespace Couper
             else
             {
                 folder = inboxFolder.Folders.Cast<Folder>().FirstOrDefault(f => f.Name == cibusFolder);
+                if (folder == null)
+                {
+                    throw new Exception("Failed to find folder under Inbox or דואר נכנס - " + cibusFolder);
+                }
             }
 
             try
@@ -537,7 +552,7 @@ namespace Couper
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "An exception is thrown");
+                MessageBox.Show(ex.Message, "Failed to search for items");
             }
             finally
             {
